@@ -4,6 +4,7 @@ import type { Locale } from "../../lib/i18n/context";
 import enText from "../../lib/i18n/locales/en";
 import jaText from "../../lib/i18n/locales/ja";
 import koText from "../../lib/i18n/locales/ko";
+import viText from "../../lib/i18n/locales/vi";
 import zhText from "../../lib/i18n/locales/zh";
 
 const ko = {
@@ -386,7 +387,104 @@ Object.assign(zh, {
   provisioning_keys: zhText["hermes.wizard.step.provisioningKeys"],
   checking_model: zhText["hermes.wizard.step.checkingModel"],
 });
-export const setupCopy: Record<Locale, Copy> = { ko, en, ja, zh };
+const vi: Copy = {
+  ...en,
+  title: "Kết nối gateway Hermes",
+  selectProfiles: "Hồ sơ hiện có cần nhập",
+  selectedProfiles: "Hồ sơ đã chọn",
+  profileNeedsToken: "Cần cấu hình thông tin xác thực API trước khi nhập hồ sơ này.",
+  profileProvisionToken: "Thông tin xác thực API sẽ được tạo trong quá trình kết nối.",
+  noSelectedProfiles:
+    "Chưa chọn hồ sơ nào. Gateway sẽ kết nối; hãy đăng ký hồ sơ riêng sau đó.",
+  intro: "Hermes đang chạy ở đâu?",
+  local: "Kết nối cục bộ",
+  remote: "Kết nối từ xa",
+  localHelp:
+    "Cục bộ là máy chủ chạy DeskRPG, có thể khác với máy tính đang mở trình duyệt này.",
+  remoteHelp: "Kết nối với Hermes trên máy chủ khác.",
+  unavailable:
+    "Không thể truy cập máy chủ trên phiên bản này. Hãy yêu cầu quản trị viên bật thiết lập máy chủ, hoặc kết nối bằng địa chỉ gateway.",
+  ssh: "Kết nối qua SSH",
+  url: "Kết nối bằng địa chỉ gateway",
+  sshHelp:
+    "Tìm Hermes trên máy chủ SSH đã đăng ký. Đăng ký máy chủ bằng cấu hình SSH (~/.ssh/config, ssh-agent) hoặc khóa DeskRPG.",
+  urlHelp: "Sử dụng địa chỉ và thông tin xác thực API hiện có.",
+  host: "Máy chủ SSH",
+  chooseHost: "Chọn máy chủ",
+  discover: "Tìm bản cài đặt",
+  discovering: "Đang tìm bản cài đặt Hermes…",
+  empty: "Không tìm thấy bản cài đặt Hermes nào.",
+  inspect: "Kết nối",
+  startAndConnect: "Khởi động và kết nối",
+  stateRunning: "Đang chạy",
+  stateStopped: "Đã dừng — kết nối sẽ khởi động gateway",
+  stateProfileGateways:
+    "Gateway hồ sơ đang chạy riêng biệt. Hãy dừng các dịch vụ này rồi tìm kiếm lại:",
+  profilesIncluded: "Hồ sơ",
+  noProfiles: "Không có hồ sơ bổ sung",
+  review: "Xem lại thiết lập",
+  service: "Dịch vụ gateway đích",
+  changes: "Các thay đổi dự kiến",
+  noChanges: "Xác minh kết nối mà không thay đổi cài đặt.",
+  prepare: "Cài đặt và kết nối",
+  verify: "Xác minh và kết nối",
+  back: "Quay lại",
+  retry: "Kiểm tra lại",
+  cancel: "Hủy",
+  cancelling: "Đang đợi thao tác hiện tại hoàn tất an toàn…",
+  cancelHelp:
+    "Hủy sẽ dừng trước bước tiếp theo sau khi thao tác hiện tại hoàn tất an toàn. Các cài đặt hoặc thiết lập đã hoàn thành sẽ không bị hoàn tác.",
+  running: "Đang chuẩn bị gateway",
+  failed: "Không thể hoàn thành kết nối.",
+  cancelled: "Đã hủy thiết lập.",
+  connected: "Đã kết nối gateway.",
+  profiles: "Xem hồ sơ",
+  name: "Tên hiển thị",
+  address: "Địa chỉ gateway",
+  token: "Thông tin xác thực API",
+  connect: "Kết nối địa chỉ",
+  loading: "Đang kiểm tra…",
+  absent:
+    "Kết nối API đã được lưu, nhưng chưa sẵn sàng vì thiếu plugin DeskRPG. Cài đặt qua SSH hoặc làm theo hướng dẫn cài đặt.",
+  guide: "Hướng dẫn cài đặt plugin",
+  installSsh: "Cài đặt qua SSH",
+  ready: "Đã xác minh kết nối plugin",
+  pluginAbsent: "Plugin chưa được cài đặt",
+  disabled: "Plugin đã bị vô hiệu hóa",
+  pending: "Cần khởi động lại dịch vụ",
+  unauthorized:
+    "Kiểm tra lại thông tin xác thực API. Xác thực thất bại không có nghĩa là thiếu plugin.",
+  unreachable: "Không thể tiếp cận gateway. Kiểm tra dịch vụ và mạng.",
+  unknown: "Không thể xác định trạng thái plugin.",
+  permission: "Không được phép thiết lập máy chủ. Kiểm tra cài đặt quản trị viên.",
+  busy: "Thiết lập đang chạy cho mục tiêu này. Vui lòng kiểm tra lại sau giây lát.",
+  invalid: "Kiểm tra lại địa chỉ và mục tiêu đã chọn.",
+  hostKey: "Không thể xác minh danh tính máy chủ SSH. Yêu cầu quản trị viên kiểm tra known hosts.",
+  inspecting: "Kiểm tra bản cài đặt",
+  installing_plugin: "Cài đặt plugin DeskRPG",
+  enabling_plugin: "Kích hoạt plugin",
+  configuring_api: "Cấu hình API",
+  restarting_gateway: "Khởi động hoặc khởi động lại dịch vụ gateway đã chọn",
+  verifying_gateway: "Xác minh API và plugin thực tế",
+  importing_profiles: "Nhập hồ sơ",
+  saving_gateway: "Lưu gateway",
+  step: "Đang thực hiện bước thiết lập",
+  pluginRevision: "Bản sửa đổi plugin cố định",
+  installing_service: viText["hermes.wizard.step.installingService"],
+  updating_plugin: viText["hermes.wizard.step.updatingPlugin"],
+  setting_timezone: viText["hermes.wizard.step.settingTimezone"],
+  setting_worker_propagation: viText["hermes.wizard.step.settingWorkerPropagation"],
+  setting_worker_launch: viText["hermes.wizard.step.settingWorkerLaunch"],
+  applying_worker_plugin: viText["hermes.wizard.step.applyingWorkerPlugin"],
+  setting_port: viText["hermes.wizard.step.settingPort"],
+  pluginVersion: viText["hermes.wizard.review.pluginVersion"],
+  reviewTimezoneToggle: viText["hermes.wizard.review.timezoneToggle"],
+  installing_hermes: viText["hermes.wizard.step.installingHermes"],
+  creating_profile: viText["hermes.wizard.step.creatingProfile"],
+  provisioning_keys: viText["hermes.wizard.step.provisioningKeys"],
+  checking_model: viText["hermes.wizard.step.checkingModel"],
+};
+export const setupCopy: Record<Locale, Copy> = { ko, en, ja, zh, vi };
 export function setupError(copy: Copy, code: unknown): string {
   if (typeof code !== "string") return copy.failed;
   if (/unauthorized/.test(code)) return copy.unauthorized;
@@ -742,6 +840,75 @@ const hostRemediation: Record<Locale, Record<string, string>> = {
     hermesInstaller: zhText["hermes.wizard.error.hermesInstallerUnavailable"],
     resumeUnavailable: zhText["hermes.wizard.error.resumeUnavailable"],
   },
+  vi: {
+    sshAuth:
+      "Đã kết nối tới máy chủ nhưng khóa của DeskRPG bị từ chối. Hãy đảm bảo bạn đã chạy lệnh khóa công khai ở bước 1 trên máy chủ đích với đúng tài khoản người dùng đã đăng ký (~/.ssh/authorized_keys). Bạn có thể mở lại từ '+ Đăng ký máy chủ SSH mới'.",
+    securityReview:
+      "Quá trình quét bảo mật Hermes đã chặn việc cài đặt. Quản trị viên cần xem xét kết quả quét và mã nguồn của phiên bản này. Trình hướng dẫn này sẽ không tự ý bỏ qua lệnh chặn.",
+    sourceUnavailable:
+      "Không thể truy cập kho lưu trữ mã nguồn plugin. Hãy yêu cầu quản trị viên kiểm tra địa chỉ phân phối và kết nối mạng.",
+    service:
+      "Không tìm thấy dịch vụ gateway được quản lý. Hãy yêu cầu quản trị viên đăng ký dịch vụ Hermes và kiểm tra trạng thái hoạt động, sau đó thử lại.",
+    serviceIdentity:
+      "Định nghĩa dịch vụ gateway khác với định nghĩa do bản cài đặt Hermes này tạo ra. Điều này thường xảy ra khi dịch vụ vẫn giữ định nghĩa cũ sau khi cập nhật Hermes. Trên máy chủ, chạy `hermes update` rồi chạy `hermes gateway restart` để làm mới định nghĩa dịch vụ, sau đó kiểm tra lại. Nếu vẫn không đổi, hãy yêu cầu quản trị viên kiểm tra đường dẫn Hermes và hồ sơ của dịch vụ.",
+    identity:
+      "Không thể xác định an toàn mối liên kết giữa bản cài đặt đã chọn và gateway đang chạy. Hãy yêu cầu quản trị viên kiểm tra đường dẫn Hermes, hồ sơ và cổng API, sau đó tìm kiếm lại bản cài đặt.",
+    secret:
+      "Thông tin xác thực API được quản lý bởi trình quản lý bí mật bên ngoài. Hãy cấu hình thông tin xác thực qua trình quản lý đó rồi kiểm tra lại. Cài đặt nhà cung cấp hiện tại sẽ được bảo lưu.",
+    credential:
+      "Thông tin xác thực API của máy chủ không hợp lệ. Hãy yêu cầu quản trị viên sửa lại cấu hình xác thực Hermes, sau đó kiểm tra lại.",
+    multiplex:
+      "Cài đặt cổng API của hồ sơ xung đột với cấu hình multiplex của gateway. Hãy yêu cầu quản trị viên đối soát hồ sơ sở hữu bộ lắng nghe và cổng riêng của từng hồ sơ, sau đó kiểm tra lại.",
+    port: "Một tiến trình khác đang sử dụng cổng API đã chọn. Hãy yêu cầu quản trị viên xác định tiến trình đó và giải quyết xung đột cổng Hermes, sau đó thử lại.",
+    pluginIdentity:
+      "Không thể xác định duy nhất bản cài đặt plugin DeskRPG. Hãy yêu cầu quản trị viên kiểm tra các plugin trùng lặp hoặc đến từ nguồn khác, sau đó thử lại.",
+    install:
+      "Cài đặt plugin thất bại. Hãy yêu cầu quản trị viên kiểm tra kết nối mạng của máy chủ và quyền hạn cài đặt, sau đó thử lại.",
+    restart:
+      "Không thể khởi động hoặc khởi động lại dịch vụ gateway đã chọn. Hãy yêu cầu quản trị viên kiểm tra trạng thái và nhật ký của dịch vụ đó, sau đó thử lại.",
+    verify:
+      "Không thể xác minh API gateway thực tế hoặc plugin sau khi thiết lập. Hãy yêu cầu quản trị viên kiểm tra dịch vụ và trạng thái xác thực API, sau đó thử lại.",
+    profile:
+      "Không thể hoàn thành xác thực hoặc nhập hồ sơ. Hãy yêu cầu quản trị viên kiểm tra thông tin xác thực API theo phạm vi hồ sơ, sau đó thử lại.",
+    host: "Thao tác trên máy chủ chưa hoàn thành. Hãy yêu cầu quản trị viên kiểm tra máy chủ và cấu hình của nó, sau đó thử lại.",
+    config:
+      "Phát hiện đường dẫn máy chủ không an toàn hoặc cấu hình không hợp lệ. Hãy yêu cầu quản trị viên kiểm tra đường dẫn cài đặt Hermes, quyền truy cập tệp và định dạng cấu hình.",
+    missing:
+      "Không tìm thấy tệp thực thi Hermes. Hãy yêu cầu quản trị viên kiểm tra cài đặt Hermes và đường dẫn thực thi trên máy chủ đó, sau đó tìm kiếm lại.",
+    ssh: "Không thể kết nối tới máy chủ SSH đã được cho phép. Hãy yêu cầu quản trị viên kiểm tra bí danh máy chủ, mạng và xác thực khóa, sau đó thử lại.",
+    timeout: viText["hermes.wizard.error.commandTimeout"],
+    hermesVersion: viText["hermes.wizard.error.hermesVersionUnsupported"],
+    pluginUpdate: viText["hermes.wizard.error.pluginUpdateFailed"],
+    pluginUpdateHost: viText["hermes.wizard.error.pluginUpdateUnsupportedHost"],
+    pluginUpdateCandidate: viText["hermes.wizard.error.pluginUpdateCandidateNotFound"],
+    serviceInstall: viText["hermes.wizard.error.serviceInstallFailed"],
+    containerRefused: viText["hermes.wizard.error.serviceContainerRefused"],
+    windowsTask: viText["hermes.wizard.error.windowsScheduledTaskMissing"],
+    pluginDependencies: viText["hermes.wizard.error.pluginDependenciesMissing"],
+    remoteWindows: viText["hermes.wizard.error.remoteWindows"],
+    outputTooLarge: viText["hermes.wizard.error.hostOutputTooLarge"],
+    spillCleanup: viText["hermes.wizard.error.hostSpillCleanupFailed"],
+    timezoneInvalid: viText["hermes.wizard.error.timezoneInvalid"],
+    timezoneWrite: viText["hermes.wizard.error.timezoneWriteFailed"],
+    workerPropagationWrite: viText["hermes.wizard.error.workerPropagationWriteFailed"],
+    workerLaunchWrite: viText["hermes.wizard.error.workerLaunchWriteFailed"],
+    portWrite: viText["hermes.wizard.error.portWriteFailed"],
+    profileName: viText["hermes.wizard.error.profileNameInvalid"],
+    profileExists: viText["hermes.wizard.error.profileExists"],
+    profileCreate: viText["hermes.wizard.error.profileCreateFailed"],
+    profileKey: viText["hermes.wizard.error.profileKeyFailed"],
+    profileProvision: viText["hermes.wizard.error.profileProvisionForbidden"],
+    profileVerify: viText["hermes.wizard.error.profileVerifyFailed"],
+    hermesInstalled: viText["hermes.wizard.error.hermesAlreadyInstalled"],
+    hermesInstallForbidden: viText["hermes.wizard.error.hermesInstallForbidden"],
+    hermesInstallFailed: viText["hermes.wizard.error.hermesInstallFailed"],
+    curlMissing: viText["hermes.wizard.error.curlMissing"],
+    systemPackages: viText["hermes.wizard.error.systemPackages"],
+    gitMissing: viText["hermes.wizard.error.gitMissing"],
+    pythonBootstrap: viText["hermes.wizard.error.pythonBootstrap"],
+    hermesInstaller: viText["hermes.wizard.error.hermesInstallerUnavailable"],
+    resumeUnavailable: viText["hermes.wizard.error.resumeUnavailable"],
+  },
 };
 export function setupHostError(locale: Locale, code: unknown): string | undefined {
   return typeof code === "string" ? hostRemediation[locale][hostErrorGroups[code]] : undefined;
@@ -761,7 +928,7 @@ export function setupWarning(locale: Locale, code: unknown): string | undefined 
   if (typeof code !== "string") return undefined;
   const key = warningKeys[code];
   if (!key) return undefined;
-  const text = { ko: koText, en: enText, ja: jaText, zh: zhText }[locale];
+  const text = { ko: koText, en: enText, ja: jaText, zh: zhText, vi: viText }[locale];
   return text[key as keyof typeof text] ?? enText[key as keyof typeof enText];
 }
 
@@ -781,7 +948,7 @@ export function setupProgress(locale: Locale, code: unknown): string | undefined
   if (typeof code !== "string") return undefined;
   const key = progressKeys[code];
   if (!key) return undefined;
-  const text = { ko: koText, en: enText, ja: jaText, zh: zhText }[locale];
+  const text = { ko: koText, en: enText, ja: jaText, zh: zhText, vi: viText }[locale];
   return text[key as keyof typeof text] ?? enText[key as keyof typeof enText];
 }
 

@@ -244,7 +244,10 @@ export default function WorkspaceNavigator(props: Props) {
                   }`}
                 >
                   <span className="flex items-center gap-2">
-                    <span className="block min-w-0 flex-1 truncate text-sm font-medium text-text">
+                    <span
+                      title={roomName}
+                      className="block min-w-0 flex-1 truncate text-sm font-medium text-text"
+                    >
                       {roomName}
                     </span>
                     {approvalBadge && (
@@ -258,7 +261,10 @@ export default function WorkspaceNavigator(props: Props) {
                     {unread > 0 && <UnreadBadge id={room.id} count={unread} />}
                   </span>
                   {room.lastMessage && (
-                    <span className="mt-0.5 block truncate text-[11px] text-text-dim">
+                    <span
+                      title={`${room.lastMessage.senderName}: ${roomMessagePreview(room.lastMessage, t)}`}
+                      className="mt-0.5 block truncate text-[11px] text-text-dim"
+                    >
                       {room.lastMessage.senderName}: {roomMessagePreview(room.lastMessage, t)}
                     </span>
                   )}
@@ -284,7 +290,10 @@ export default function WorkspaceNavigator(props: Props) {
                   }`}
                 >
                   <span className="flex items-center gap-2">
-                    <span className="block min-w-0 flex-1 truncate text-sm font-medium text-text">
+                    <span
+                      title={thread.npcName}
+                      className="block min-w-0 flex-1 truncate text-sm font-medium text-text"
+                    >
                       {thread.npcName}
                       {!thread.active && (
                         <span className="ml-1 text-[11px] font-normal text-text-dim">
@@ -294,7 +303,10 @@ export default function WorkspaceNavigator(props: Props) {
                     </span>
                     {unread > 0 && <UnreadBadge id={`dm-${thread.npcId}`} count={unread} />}
                   </span>
-                  <span className="mt-0.5 block truncate text-[11px] text-text-dim">
+                  <span
+                    title={`${thread.lastMessage.role === "player" ? t("game.you") : thread.npcName}: ${thread.lastMessage.content}`}
+                    className="mt-0.5 block truncate text-[11px] text-text-dim"
+                  >
                     {thread.lastMessage.role === "player" ? t("game.you") : thread.npcName}:{" "}
                     {thread.lastMessage.content}
                   </span>

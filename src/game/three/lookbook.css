@@ -3,7 +3,7 @@
   width: 100%;
   margin: 0 auto;
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 380px;
+  grid-template-columns: minmax(0, 1fr) clamp(300px, 28vw, 380px);
   min-height: 100dvh;
   color: var(--color-text);
   background: var(--color-bg);
@@ -71,7 +71,7 @@
 }
 .lookbook-grid {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(210px, 1fr));
   gap: 16px;
 }
 .lookbook-card {

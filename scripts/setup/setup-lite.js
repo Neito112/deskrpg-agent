@@ -4,7 +4,7 @@ const fs = require("node:fs");
 const path = require("node:path");
 const { execFileSync } = require("node:child_process");
 
-const ROOT = path.join(__dirname, "..");
+const ROOT = path.join(__dirname, "..", "..");
 const ENV_FILE = path.join(ROOT, ".env.local");
 const ENV_EXAMPLE = path.join(ROOT, ".env.example");
 
@@ -37,12 +37,26 @@ try {
   execFileSync("npx", ["drizzle-kit", "push", "--config=drizzle-sqlite.config.ts", "--force"], {
     cwd: ROOT,
     stdio: "inherit",
+    shell: true,
     env: { ...process.env, DB_TYPE: "sqlite", SQLITE_PATH: "data/deskrpg.db" },
   });
 } catch {
   console.error("[setup] Schema push failed. You may need to run manually:");
   console.error("  npx drizzle-kit push --config=drizzle-sqlite.config.ts --force");
   process.exit(1);
+}
+
+// 5. Ensure co-located hermes directory in DeskRPG
+const localHermes = process.env.LOCALAPPDATA ? path.join(process.env.LOCALAPPDATA, "hermes") : null;
+const bundledHermes = path.join(ROOT, "hermes");
+if (localHermes && fs.existsSync(localHermes) && !fs.existsSync(bundledHermes)) {
+  try {
+    if (process.platform === "win32") {
+      const { execSync } = require("node:child_process");
+      execSync(`cmd /c mklink /J "${bundledHermes}" "${localHermes}"`, { stdio: "ignore" });
+      console.log("[setup] Linked co-located Hermes directory to DeskRPG");
+    }
+  } catch {}
 }
 
 console.log("\n✓ Ready (SQLite mode) — run: npm run dev\n");

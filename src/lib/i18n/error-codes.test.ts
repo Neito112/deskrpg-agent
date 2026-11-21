@@ -7,6 +7,7 @@ import assert from "node:assert/strict";
 import en from "./locales/en";
 import ja from "./locales/ja";
 import ko from "./locales/ko";
+import vi from "./locales/vi";
 import zh from "./locales/zh";
 import {
   ERROR_CODE_HEADER,
@@ -318,7 +319,7 @@ const TEST_CODES: Partial<Record<ErrorCode, string>> = {
   profile_not_found: "errors.profileNotFound",
 } as const;
 
-for (const locale of [en, ko, ja, zh]) {
+for (const locale of [en, ko, ja, zh, vi]) {
   test("required i18n keys exist in all locales", () => {
     for (const key of REQUIRED_KEYS) {
       assert.ok(locale[key], `Missing translation key: ${key}`);
@@ -353,6 +354,7 @@ test("every registered error code has a message in every locale", () => {
     ["en", en],
     ["ja", ja],
     ["zh", zh],
+    ["vi", vi],
   ];
   const missing: string[] = [];
   for (const [code, key] of Object.entries(ERROR_MESSAGE_KEYS)) {
@@ -419,6 +421,7 @@ test("all locales carry the same keys", () => {
     ["en", en],
     ["ja", ja],
     ["zh", zh],
+    ["vi", vi],
   ] as const) {
     for (const key of base) if (!(key in dict)) missing.push(`${lang}: ${key}`);
     for (const key of Object.keys(dict)) {
@@ -487,7 +490,7 @@ test("handoff errors resolve to a user-facing sentence in all four locales", () 
   for (const code of codes) {
     const key = ERROR_MESSAGE_KEYS[code as ErrorCode];
     assert.ok(key, code);
-    for (const locale of [ko, en, ja, zh]) assert.ok(locale[key], `${code}: ${key}`);
+    for (const locale of [ko, en, ja, zh, vi]) assert.ok(locale[key], `${code}: ${key}`);
   }
 });
 
@@ -514,7 +517,7 @@ test("a meeting map error shows its reason in the viewer's language", async () =
   assert.equal(getLocalizedErrorMessage(t("ko"), { ...payload, reason: "nope" }), general);
   assert.match(general, /회의실 맵을 확인할 수 없습니다/);
   // Every reason has a translation in every locale.
-  for (const locale of ["ko", "en", "ja", "zh"])
+  for (const locale of ["ko", "en", "ja", "zh", "vi"])
     for (const reason of Object.keys(MEETING_MAP_ERROR_REASONS))
       assert.notEqual(
         getLocalizedErrorMessage(t(locale), { ...payload, reason }),

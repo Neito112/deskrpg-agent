@@ -28,9 +28,24 @@ export interface NpcPromptLayers {
   meetingProtocol?: string | null;
   /** Points to DeskRPG's current card registration path. */
   taskConfirmation?: boolean;
+  /** Mandatory dynamic slide reporting policy via HyperFrames / interactive HTML. */
+  dynamicSlideReport?: boolean;
   /** Language of the requesting user. Omitted keeps the original Korean text; anything else but ko gets English. */
   locale?: string | null;
 }
+
+const DYNAMIC_SLIDE_REPORT_INSTRUCTIONS: Record<PromptLocale, readonly string[]> = {
+  ko: [
+    "동료로서 자연스럽고 정중하게 소통하며 도구명·API·CLI·내부 파일 경로를 절대 언급하지 않는다.",
+    "모든 분석 보고서, 진행 상황, 업무 종합 요약 또는 회의록은 3-5개 핵심 요약과 함께 대화형 슬라이드 링크([슬라이드 열기](URL))로 전달한다.",
+    "중간 실행 과정이나 도구 호출 과정을 설명하지 않고 오직 완성된 최종 결과만 전달한다.",
+  ],
+  en: [
+    "Communicate naturally and politely as a real coworker. Never mention tool names, APIs, CLIs, or internal system paths.",
+    "Every analytical report, progress summary, task wrap-up or meeting minutes must include: (1) 3-5 bullet executive summary, (2) interactive slide deck link ([Open Slide Deck](URL)).",
+    "Deliver only the final cohesive response without narrating intermediate execution steps or tool executions.",
+  ],
+};
 
 const TASK_REGISTRATION: Record<PromptLocale, readonly string[]> = {
   ko: [
@@ -66,6 +81,11 @@ export function composeNpcInstructions(layers: NpcPromptLayers): string | undefi
   if (layers.taskConfirmation) {
     const lang = promptLocale(layers.locale === undefined ? "ko" : layers.locale);
     parts.push(section("task-registration", TASK_REGISTRATION[lang].join("\n")));
+  }
+
+  if (layers.dynamicSlideReport) {
+    const lang = promptLocale(layers.locale === undefined ? "ko" : layers.locale);
+    parts.push(section("dynamic-slide-report", DYNAMIC_SLIDE_REPORT_INSTRUCTIONS[lang].join("\n")));
   }
   return parts.length ? parts.join("\n\n") : undefined;
 }

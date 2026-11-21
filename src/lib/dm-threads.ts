@@ -38,7 +38,11 @@ export function summarizeDmThreads(rows: DmThreadRow[]): DmThread[] {
     if (row.role !== "player" && row.role !== "npc") continue;
     const content = row.content.trim();
     if (!content) continue;
-    const at = row.createdAt ? row.createdAt.getTime() : 0;
+    const at = row.createdAt
+      ? row.createdAt instanceof Date
+        ? row.createdAt.getTime()
+        : new Date(row.createdAt).getTime() || 0
+      : 0;
     const current = byNpc.get(row.npcId);
     // At the same timestamp, the row read later wins — since the query is ascending, that's the last message.
     if (current && current.lastAt > at) continue;

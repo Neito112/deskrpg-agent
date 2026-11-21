@@ -27,7 +27,11 @@ export function setupThrowawaySqlite(label: string): string {
   process.env.DESKRPG_HOME = os.tmpdir();
   process.env.SQLITE_PATH = sqlitePath;
   for (const ext of ["", "-wal", "-shm"]) {
-    process.on("exit", () => fs.rmSync(`${sqlitePath}${ext}`, { force: true }));
+    process.on("exit", () => {
+      try {
+        fs.rmSync(`${sqlitePath}${ext}`, { force: true });
+      } catch {}
+    });
   }
   return sqlitePath;
 }

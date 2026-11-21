@@ -58,7 +58,7 @@ export default function RoomHeader({
   };
 
   return (
-    <div className="px-3 py-2 border-b border-border bg-surface/60">
+    <div className="room-header px-3 py-2 border-b border-border bg-surface/60">
       <div className="flex items-center gap-2">
         <button
           onClick={onBack}

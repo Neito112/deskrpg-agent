@@ -688,7 +688,16 @@ def version_below(value, minimum):
 def read(path):
     if path.is_symlink(): fail('unsafe_host_path')
     if path.exists() and path.stat().st_size > 1048576: fail('invalid_host_config')
-    return path.read_text(encoding='utf-8-sig') if path.exists() else ''
+    if not path.exists(): return ''
+    raw = path.read_bytes()
+    text = ''
+    if raw.startswith(b'\xff\xfe') or raw.startswith(b'\xfe\xff'):
+        try: text = raw.decode('utf-16')
+        except Exception: pass
+    if not text:
+        try: text = raw.decode('utf-8-sig')
+        except Exception: text = raw.decode('latin-1')
+    return text.replace('\r\n', '\n')
 def config(home):
     value = yaml.safe_load(read(home / 'config.yaml')) or {}
     if not isinstance(value, dict): fail('invalid_host_config')
@@ -944,7 +953,7 @@ def identity(name, home):
                 except Exception: pid = 0
                 # A restart path exists only when there's a scheduled task; a stop and start rereads changed settings.
                 # With only the Startup folder fallback there's no way to stop it, so a managed service is required.
-                if registered.returncode == 0 and re.fullmatch(r'[A-Za-z0-9_-]+', task):
+                if (registered.returncode == 0 or cli_drains()) and re.fullmatch(r'[A-Za-z0-9_-]+', task):
                     command, restart_env, stop = windows_restart(task, name, home, python)
                     warning = None
                     # PM runtime: the task keeps running the store python (upstream _gateway_run_argv), so HERMES_BIN
@@ -1447,7 +1456,7 @@ def main(action, candidate_id=None, option=None):
         if version_below(public['version'], HERMES_MIN): fail('hermes_version_unsupported')
         if not needs_service(owner): return {'ok': True}
         assert_port_owned(public, owner)
-        env = {**os.environ, 'HERMES_HOME': str(home)}
+        env = {**os.environ, 'HERMES_HOME': str(home), 'HERMES_GATEWAY_INSTALL_START_NOW': '1', 'HERMES_GATEWAY_INSTALL_START_ON_LOGIN': '1'}
         code, output = bounded(hermes_argv('--profile', name, 'gateway', 'install'), env)
         if code:
             # Upstream refuses a user-scope unit inside a container (hermes_cli/gateway.py
@@ -1503,7 +1512,7 @@ def main(action, candidate_id=None, option=None):
         return {'ok': True, 'provisioned': True, 'profile': target_name}
     preflight(name,home,item)
     if action == 'install':
-        env = {**os.environ, 'HERMES_HOME': str(home)}
+        env = {**os.environ, 'HERMES_HOME': str(home), 'HERMES_GATEWAY_INSTALL_START_NOW': '1', 'HERMES_GATEWAY_INSTALL_START_ON_LOGIN': '1'}
         argv = hermes_argv('--profile', name, 'plugins')
         updating = False
         if not public['pluginInstalled']: argv += ['install', SOURCE, '--ref', PIN, '--enable']

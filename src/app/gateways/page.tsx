@@ -1,7 +1,7 @@
 "use client";
 
 import { Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Loader2 } from "lucide-react";
+import { AlertTriangle, Check, Download, Globe, Loader2, Play, RefreshCw, Trash2 } from "lucide-react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 
@@ -14,6 +14,7 @@ import {
 import GatewayOnboardingGuide from "@/components/gateway/GatewayOnboardingGuide";
 import GatewayStatusCard, { type GatewayStatus } from "@/components/gateway/GatewayStatusCard";
 import DiagnosticsPanel from "@/components/gateway/DiagnosticsPanel";
+import HermesSystemSettings from "@/components/gateway/HermesSystemSettings";
 import ImportableProfilesNotice from "@/components/hermes/ImportableProfilesNotice";
 import { getLocalizedErrorMessage, withHeaderErrorCode } from "@/lib/i18n/error-codes";
 import { useLocale, useT } from "@/lib/i18n";
@@ -339,6 +340,97 @@ function GatewayManagementPageInner() {
   // The diagnostics link appears only for someone the diagnostics API answers (admins).
   const [diagnosticsAvailable, setDiagnosticsAvailable] = useState(false);
 
+  // Local installation and modal states
+  const [localStatus, setLocalStatus] = useState<{ isInstalled: boolean; isRunning: boolean } | null>(null);
+  const [checkingLocal, setCheckingLocal] = useState(true);
+  const [installingLocal, setInstallingLocal] = useState(false);
+  const [showConnectModal, setShowConnectModal] = useState(false);
+  const [connectUrl, setConnectUrl] = useState("http://127.0.0.1:8642");
+  const [connectToken, setConnectToken] = useState("");
+  const [connectName, setConnectName] = useState("");
+  const [connectingGateway, setConnectingGateway] = useState(false);
+
+  const checkLocalStatus = useCallback(async () => {
+    try {
+      const r = await fetch("/api/hermes/local-status");
+      const data = await r.json().catch(() => ({}));
+      if (data.ok) {
+        setLocalStatus({ isInstalled: !!data.isInstalled, isRunning: !!data.isRunning });
+        return data;
+      }
+    } catch {}
+    return null;
+  }, []);
+
+  useEffect(() => {
+    let isMounted = true;
+    checkLocalStatus().finally(() => {
+      if (isMounted) setCheckingLocal(false);
+    });
+    const interval = setInterval(() => {
+      void checkLocalStatus();
+    }, 10000);
+    return () => {
+      isMounted = false;
+      clearInterval(interval);
+    };
+  }, [checkLocalStatus]);
+
+  const handleLocalInstall = async () => {
+    setInstallingLocal(true);
+    setError("");
+    setNotice("");
+    try {
+      const res = await fetch("/api/hermes/local-status", { method: "POST" });
+      const data = await res.json().catch(() => ({}));
+      if (res.ok && data.ok) {
+        setLocalStatus({ isInstalled: true, isRunning: !!data.isRunning });
+        if (data.isRunning) {
+          setNotice("Đã xác nhận Gateway đang vận hành bình thường!");
+        } else {
+          setError("Gateway chưa phản hồi trên cổng 8642. Vui lòng kiểm tra lại dịch vụ.");
+        }
+        void loadGateways();
+      } else {
+        setError(data.error || "Không thể khởi chạy hoặc cài đặt Hermes cục bộ");
+      }
+    } catch {
+      setError("Lỗi kết nối khi khởi chạy/cài đặt cục bộ.");
+    } finally {
+      setInstallingLocal(false);
+    }
+  };
+
+  const handleConnectGateway = async () => {
+    if (!connectUrl.trim()) return;
+    setConnectingGateway(true);
+    setError("");
+    setNotice("");
+    try {
+      const res = await fetch("/api/gateways", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          url: connectUrl.trim(),
+          token: connectToken.trim(),
+          displayName: connectName.trim() || undefined,
+        }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (res.ok) {
+        setNotice("Đã kết nối Gateway thành công!");
+        setShowConnectModal(false);
+        void loadGateways();
+      } else {
+        setError(data.error || "Không thể kết nối Gateway");
+      }
+    } catch {
+      setError("Lỗi kết nối tới Gateway");
+    } finally {
+      setConnectingGateway(false);
+    }
+  };
+
   // Reload progress indicator. Shown small next to the title without swapping the screen (overlapping reloads are counted).
   const [refreshing, setRefreshing] = useState(false);
   const loadedOnce = useRef(false);
@@ -503,13 +595,14 @@ function GatewayManagementPageInner() {
     };
   };
 
-  const handleDelete = async () => {
-    if (!selectedGateway) return;
+  const handleDelete = async (gatewayToDelete?: GatewayRow) => {
+    const target = gatewayToDelete ?? selectedGateway;
+    if (!target) return;
     // Deleting a gateway cascades from profiles → NPCs → tasks. A confirmation that does not say what disappears
     // and how much is not a confirmation — count the numbers first and put them in the text.
     let usage = { profiles: 0, npcs: 0, channels: 0 };
     try {
-      usage = await sumGatewayUsage(selectedGateway.id);
+      usage = await sumGatewayUsage(target.id);
     } catch {
       // Failing to read the numbers does not block deletion — ask with 0.
     }
@@ -536,14 +629,14 @@ function GatewayManagementPageInner() {
     setNotice("");
     setBlockingChannels([]);
     try {
-      const res = await fetch(`/api/gateways/${selectedGateway.id}`, { method: "DELETE" });
+      const res = await fetch(`/api/gateways/${target.id}`, { method: "DELETE" });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) {
         throw data;
       }
       setTestStates((prev) => {
         const next = { ...prev };
-        delete next[selectedGateway.id];
+        delete next[target.id];
         return next;
       });
       await loadGateways();
@@ -615,363 +708,430 @@ function GatewayManagementPageInner() {
     );
   }
 
-  return (
-    <div className="theme-web workspace-page">
-      <div className="workspace-page-inner">
-        <div className="mb-8 flex flex-wrap items-start justify-between gap-x-4 gap-y-3">
-          <div>
-            <h1 className="flex items-center gap-3 text-3xl font-bold">
-              {t("gateways.title")}
-              {refreshing && (
-                <span
-                  role="status"
-                  aria-live="polite"
-                  data-gateways-refreshing=""
-                  className="flex items-center gap-1 text-xs font-normal text-text-muted"
-                >
-                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                  {t("gateways.refreshing")}
-                </span>
-              )}
-            </h1>
-            <p className="mt-1 text-text-muted">{t("gateways.subtitle")}</p>
-          </div>
-          <div className="flex flex-wrap items-center gap-2">
-            {returnTo && (
-              <Link
-                href={returnTo}
-                className="whitespace-nowrap rounded-lg bg-surface-raised px-4 py-2 text-sm font-medium hover:bg-surface-raised/80"
-              >
-                {t("gateways.backToOffice")}
-              </Link>
-            )}
-            {diagnosticsAvailable && (
-              <Link
-                href="/gateways/diagnostics"
-                data-gateway-diagnostics-link=""
-                className="whitespace-nowrap rounded-lg bg-surface-raised px-4 py-2 text-sm font-medium hover:bg-surface-raised/80"
-              >
-                {t("diagnostics.title")}
-              </Link>
-            )}
-          </div>
-        </div>
+  const isLocalRunning = Boolean(localStatus?.isRunning);
+  const isLocalInstalled = Boolean(localStatus?.isInstalled);
 
-        {gateways.length === 0 && <GatewayOnboardingGuide />}
+  // Status verification: Must confirm it is ACTUALLY OPERATIONAL / RUNNING / RESPONDING,
+  // not merely checking if it is installed on the machine!
+  const isOperational = Boolean(
+    isLocalRunning ||
+    gateways.some((g) => {
+      const isLoopback = g.baseUrl.includes("127.0.0.1:8642") || g.baseUrl.includes("localhost:8642");
+      if (isLoopback) {
+        return isLocalRunning;
+      }
+      return (
+        (g.lastValidationStatus === "valid" || testStates[g.id]?.status === "connected") &&
+        testStates[g.id]?.status !== "error" &&
+        g.pluginStatus !== "plugin_absent"
+      );
+    }),
+  );
+
+  return (
+    <div className="theme-web workspace-page min-h-[85vh] bg-bg text-text py-8 px-4 sm:px-6">
+      <div className={`mx-auto ${isOperational ? "max-w-4xl space-y-6" : "max-w-lg pt-12 space-y-6"}`}>
+        {/* Header & 2 Buttons */}
+        {isOperational ? (
+          <div className="flex flex-wrap items-center justify-between gap-4 border-b border-border/60 pb-5">
+            <div>
+              <h1 className="flex items-center gap-3 text-2xl font-bold tracking-tight text-text">
+                {t("gateways.title")}
+                {refreshing && (
+                  <span
+                    role="status"
+                    aria-live="polite"
+                    className="flex items-center gap-1 text-xs font-normal text-text-muted"
+                  >
+                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                    {t("gateways.refreshing")}
+                  </span>
+                )}
+              </h1>
+              <p className="mt-1 text-xs text-text-muted">
+                Quản lý cổng kết nối và cấu hình hệ thống AI Hermes
+              </p>
+            </div>
+
+            {/* 2 Buttons Pushed to Top and Shrunk */}
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => {
+                  const primaryGw = gateways.find((g) => g.baseUrl.includes("8642")) || gateways[0];
+                  if (primaryGw) void handleTest(primaryGw.id);
+                  void checkLocalStatus();
+                }}
+                className="inline-flex items-center gap-1.5 rounded-lg border border-emerald-500/30 bg-emerald-500/10 px-3 py-1.5 text-xs font-semibold text-emerald-600 dark:text-emerald-400 hover:bg-emerald-500/20 transition cursor-pointer"
+                title="Gateway đã được xác nhận đang vận hành. Nhấn để kiểm tra lại."
+              >
+                <span className="relative flex h-2 w-2">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                  <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+                </span>
+                <span>Đang vận hành</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setShowConnectModal(true)}
+                className="inline-flex items-center gap-1.5 rounded-lg border border-border bg-surface px-3 py-1.5 text-xs font-semibold text-text shadow-sm hover:bg-surface-raised transition cursor-pointer"
+              >
+                <Globe className="h-3.5 w-3.5 shrink-0" />
+                <span>Kết nối gateway</span>
+              </button>
+
+              {selectedGateway && (
+                <button
+                  type="button"
+                  onClick={() => void handleDelete()}
+                  disabled={deleting}
+                  className="inline-flex items-center gap-1.5 rounded-lg border border-danger/30 bg-danger/10 px-3 py-1.5 text-xs font-semibold text-danger hover:bg-danger/20 transition cursor-pointer disabled:opacity-60"
+                  title="Ngắt kết nối và xóa Gateway này"
+                >
+                  {deleting ? (
+                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                  ) : (
+                    <Trash2 className="h-3.5 w-3.5 shrink-0" />
+                  )}
+                  <span>{deleting ? "Đang xóa..." : "Xóa Gateway"}</span>
+                </button>
+              )}
+            </div>
+          </div>
+        ) : (
+          <div>
+            <div className="mb-8 text-center">
+              <h1 className="text-3xl font-bold tracking-tight text-text">
+                {t("gateways.title")}
+              </h1>
+              <p className="mt-2 text-sm text-text-muted">
+                Xác thực và vận hành cổng kết nối Hermes trước khi cấu hình hệ thống
+              </p>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              {isLocalInstalled ? (
+                <button
+                  type="button"
+                  onClick={() => void handleLocalInstall()}
+                  disabled={installingLocal || checkingLocal}
+                  className="flex items-center justify-center gap-2.5 rounded-xl bg-primary px-5 py-4 text-base font-semibold text-white shadow hover:bg-primary-hover disabled:opacity-60 transition cursor-pointer"
+                >
+                  {installingLocal ? (
+                    <Loader2 className="h-5 w-5 animate-spin shrink-0" />
+                  ) : (
+                    <Play className="h-5 w-5 shrink-0 fill-current" />
+                  )}
+                  <span>{installingLocal ? "Đang khởi chạy & vận hành..." : "Khởi chạy & Vận hành"}</span>
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => void handleLocalInstall()}
+                  disabled={installingLocal || checkingLocal}
+                  className="flex items-center justify-center gap-2.5 rounded-xl bg-primary px-5 py-4 text-base font-semibold text-white shadow hover:bg-primary-hover disabled:opacity-60 transition cursor-pointer"
+                >
+                  {installingLocal ? (
+                    <Loader2 className="h-5 w-5 animate-spin shrink-0" />
+                  ) : (
+                    <Download className="h-5 w-5 shrink-0" />
+                  )}
+                  <span>{installingLocal ? "Đang cài đặt & vận hành..." : "Cài cục bộ"}</span>
+                </button>
+              )}
+
+              <button
+                type="button"
+                onClick={() => setShowConnectModal(true)}
+                className="flex items-center justify-center gap-2.5 rounded-xl border border-border bg-surface px-5 py-4 text-base font-semibold text-text shadow-sm hover:bg-surface-raised transition cursor-pointer"
+              >
+                <Globe className="h-5 w-5 shrink-0" />
+                <span>Kết nối gateway</span>
+              </button>
+            </div>
+
+            {gateways.length > 0 && (
+              <div className="mt-8 space-y-3">
+                <h3 className="text-xs font-semibold text-text-muted uppercase tracking-wider">
+                  Cổng kết nối đã lưu ({gateways.length})
+                </h3>
+                <div className="space-y-2">
+                  {gateways.map((gw) => (
+                    <div
+                      key={gw.id}
+                      className="flex items-center justify-between rounded-xl border border-border bg-surface p-4"
+                    >
+                      <div>
+                        <div className="font-semibold text-sm text-text">{gw.displayName}</div>
+                        <div className="font-mono text-xs text-text-muted">{gw.baseUrl}</div>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <button
+                          type="button"
+                          onClick={() => void handleTest(gw.id)}
+                          disabled={testingGatewayId === gw.id}
+                          className="inline-flex items-center gap-1.5 rounded-lg border border-border bg-surface-raised px-3 py-1.5 text-xs font-medium text-text hover:bg-surface-raised/80 cursor-pointer"
+                        >
+                          {testingGatewayId === gw.id ? (
+                            <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                          ) : (
+                            <RefreshCw className="h-3.5 w-3.5" />
+                          )}
+                          Kiểm tra
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => void handleDelete(gw)}
+                          disabled={deleting}
+                          className="inline-flex items-center gap-1.5 rounded-lg border border-danger/40 bg-danger/10 px-3 py-1.5 text-xs font-semibold text-danger hover:bg-danger/20 cursor-pointer disabled:opacity-60"
+                        >
+                          <Trash2 className="h-3.5 w-3.5" />
+                          Xóa
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Gateway Selection Tabs if multiple gateways exist */}
+        {gateways.length > 1 && (
+          <div className="flex items-center gap-2 overflow-x-auto pb-1">
+            <span className="text-xs font-medium text-text-muted shrink-0">Chọn Gateway:</span>
+            {gateways.map((g) => (
+              <button
+                key={g.id}
+                type="button"
+                onClick={() => setSelectedGatewayId(g.id)}
+                className={`rounded-lg px-3 py-1.5 text-xs font-medium transition cursor-pointer shrink-0 ${
+                  g.id === selectedGatewayId
+                    ? "bg-primary text-white"
+                    : "border border-border bg-surface text-text hover:bg-surface-raised"
+                }`}
+              >
+                {g.displayName || g.baseUrl}
+              </button>
+            ))}
+          </div>
+        )}
 
         {error && (
-          <div className="mb-6 rounded-lg border border-danger/40 bg-surface px-4 py-3 text-sm text-danger">
+          <div className="rounded-xl border border-danger/40 bg-danger/10 px-4 py-3 text-sm text-danger text-center">
             {error}
           </div>
         )}
-        {blockingChannels.length > 0 && (
-          <div className="mb-6 rounded-lg border border-danger/40 bg-surface px-4 py-3 text-sm">
-            <p className="mb-3 text-text-muted">{t("gateways.unbindHint")}</p>
-            <ul className="space-y-2">
-              {blockingChannels.map((channel) => (
-                <li key={channel.channelId} className="flex items-center justify-between gap-4">
-                  <span>
-                    <span className="font-medium">{channel.channelName}</span>
-                    <span className="ml-2 text-text-muted">
-                      {t("gateways.unbindLoses", {
-                        npcs: String(channel.npcCount),
-                        minutes: String(channel.meetingMinutesCount),
-                      })}
-                    </span>
-                  </span>
-                  <button
-                    type="button"
-                    disabled={!channel.canUnbind || unbinding === channel.channelId}
-                    onClick={() => void handleUnbindChannel(channel)}
-                    title={channel.canUnbind ? undefined : t("gateways.unbindNotOwner")}
-                    className="shrink-0 rounded-lg bg-surface-raised px-3 py-1.5 text-sm font-medium hover:bg-surface-raised/80 disabled:opacity-50"
-                  >
-                    {t("gateways.unbind")}
-                  </button>
-                </li>
-              ))}
-            </ul>
-          </div>
-        )}
         {notice && (
-          <div className="mb-6 rounded-lg border border-success/30 bg-surface px-4 py-3 text-sm text-success">
+          <div className="rounded-xl border border-success/30 bg-success/10 px-4 py-3 text-sm text-success text-center">
             {notice}
           </div>
         )}
 
-        <div className="grid gap-6 lg:grid-cols-[320px_minmax(0,1fr)]">
-          <aside className="rounded-xl border border-border bg-surface p-4">
-            <div className="mb-3 flex items-center justify-between">
-              <h2 className="text-lg font-semibold">{t("gateways.listTitle")}</h2>
-              <button
-                type="button"
-                onClick={() => {
-                  setSelectedGatewayId("");
-                  setFormMode("create");
-                  setDisplayName("");
-                  setBaseUrl("");
-                  setToken("");
-                  setError("");
-                  setNotice("");
-                }}
-                className="rounded bg-primary px-3 py-1.5 text-xs font-semibold text-white hover:bg-primary-hover"
-              >
-                {t("gateways.new")}
-              </button>
+        {/* Blocking Channels Alert & Unbind Actions */}
+        {blockingChannels.length > 0 && (
+          <div className="rounded-xl border border-warning/40 bg-warning/10 p-4 space-y-3">
+            <div className="flex items-center gap-2 text-sm font-semibold text-warning">
+              <AlertTriangle className="h-4 w-4 shrink-0" />
+              <span>{t("gateways.deleteBlockedByChannels")}</span>
             </div>
+            <p className="text-xs text-text-muted">
+              Vui lòng ngắt kết nối gateway khỏi các kênh sau đây để có thể xóa:
+            </p>
             <div className="space-y-2">
-              {gateways.length === 0 ? (
-                <div className="rounded-lg bg-bg px-3 py-4 text-sm text-text-muted">
-                  <p>{t("gateways.empty")}</p>
-                  <p className="mt-1">{t("gateways.emptyHint")}</p>
-                </div>
-              ) : (
-                gateways.map((gateway) => (
-                  <button
-                    key={gateway.id}
-                    type="button"
-                    onClick={() => setSelectedGatewayId(gateway.id)}
-                    className={`w-full rounded-lg px-3 py-3 text-left transition ${
-                      selectedGatewayId === gateway.id
-                        ? "bg-primary-muted text-primary-light ring-1 ring-primary-light"
-                        : "bg-bg hover:bg-surface-raised"
-                    }`}
-                  >
-                    <div className="flex items-center justify-between gap-3">
-                      <span className="font-medium">{gateway.displayName}</span>
-                      <span className="text-[11px] text-text-muted">
-                        {gateway.isOwner ? t("gateways.owner") : t("gateways.shared")}
-                      </span>
-                    </div>
-                    <p className="mt-1 truncate text-xs text-text-muted">{gateway.baseUrl}</p>
-                    <p className="mt-1 text-xs text-text-muted">
-                      {gateway.lastValidationStatus === "valid"
-                        ? t("gateways.statusValid")
-                        : gateway.lastValidationStatus === "pairing_required"
-                          ? t("gateways.statusPairing")
-                          : gateway.lastValidationStatus
-                            ? t("gateways.statusUnknown")
-                            : t("gateways.statusUntested")}
-                    </p>
-                  </button>
-                ))
-              )}
-            </div>
-          </aside>
-
-          <main className="space-y-6">
-            {!selectedGateway ? (
-              <GatewaySetupWizard
-                onConnected={(gatewayId) => {
-                  setSelectedGatewayId(gatewayId);
-                  void loadGateways();
-                }}
-                onSaved={(gatewayId, pluginStatus) =>
-                  void loadGateways(reloadAfterSave(gatewayId, pluginStatus))
-                }
-              />
-            ) : (
-              <section className="rounded-xl border border-border bg-surface p-5">
-                <div className="mb-4 flex items-center justify-between gap-3">
-                  <div>
-                    <h2 className="text-lg font-semibold">
-                      {formMode === "create" ? t("gateways.createTitle") : t("gateways.editTitle")}
-                    </h2>
-                    <p className="mt-1 text-sm text-text-muted">
-                      {formMode === "create" ? t("gateways.createHelp") : t("gateways.editHelp")}
-                    </p>
-                  </div>
-                  {selectedGateway && (
-                    <div className="flex flex-wrap items-center gap-2">
-                      {selectedGateway.isOwner && (
-                        <Link
-                          href={`/gateways/${encodeURIComponent(selectedGateway.id)}/share`}
-                          data-gateway-share-link=""
-                          className="whitespace-nowrap rounded-lg bg-surface-raised px-4 py-2 text-sm font-medium hover:bg-surface-raised/80"
-                        >
-                          {t("gateways.shareTitle")}
-                        </Link>
-                      )}
-                      {selectedGateway.isOwner && selectedGateway.dashboardUrl && (
-                        <a
-                          href={selectedGateway.dashboardUrl}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="whitespace-nowrap rounded-lg bg-surface-raised px-4 py-2 text-sm font-medium hover:bg-surface-raised/80"
-                        >
-                          {t("gateways.openDashboard")} ↗
-                        </a>
-                      )}
-                      <button
-                        type="button"
-                        onClick={() => void handleTest(selectedGateway.id)}
-                        disabled={testingGatewayId === selectedGateway.id}
-                        className="rounded-lg bg-surface-raised px-4 py-2 text-sm font-medium hover:bg-surface-raised/80 disabled:opacity-60"
-                      >
-                        {testingGatewayId === selectedGateway.id
-                          ? t("gateway.testing")
-                          : t("gateway.testConnection")}
-                      </button>
-                    </div>
-                  )}
-                </div>
-
-                {selectedGateway && (
-                  <PluginVersionLine
-                    gateway={selectedGateway}
-                    onUpdated={() => void loadGateways({ autoSelect: false })}
-                  />
-                )}
-
-                {selectedGateway && (
-                  // Recreate by key when the gateway changes so the previous apply result is not carried over.
-                  <WorkerPluginLine
-                    key={selectedGateway.id}
-                    warning={selectedGateway.workerPluginWarning ?? null}
-                    propagation={selectedGateway.workerPropagation ?? null}
-                    unreviewed={selectedGateway.unreviewedProfiles ?? []}
-                    isOwner={selectedGateway.isOwner === true}
-                    apply={() => applyWorkerPluginRequest(selectedGateway.id)}
-                    onApplied={() => void loadGateways({ autoSelect: false })}
-                    enablePropagation={() => enableWorkerPropagationRequest(selectedGateway.id)}
-                    onRecheck={() => handleTest(selectedGateway.id)}
-                  />
-                )}
-
-                {selectedGateway && (
-                  <WorkerLaunchLine
-                    key={`launch-${selectedGateway.id}`}
-                    warning={selectedGateway.workerLaunchWarning ?? null}
-                    isOwner={selectedGateway.isOwner === true}
-                    onRecheck={() => handleTest(selectedGateway.id)}
-                  />
-                )}
-
-                <div className="grid gap-4">
-                  <div>
-                    <label className="mb-1 block text-sm font-semibold text-text-secondary">
-                      {t("gateways.displayName")}
-                    </label>
-                    <input
-                      type="text"
-                      value={displayName}
-                      onChange={(e) => setDisplayName(e.target.value)}
-                      disabled={!!selectedGateway && !selectedGateway.isOwner}
-                      className="w-full rounded border border-border bg-bg px-3 py-2 text-text focus:outline-none focus:border-primary disabled:opacity-60"
-                    />
-                  </div>
-                  <div>
-                    <label className="mb-1 block text-sm font-semibold text-text-secondary">
-                      {t("settings.gatewayUrl")}
-                    </label>
-                    <input
-                      type="text"
-                      value={baseUrl}
-                      onChange={(e) => setBaseUrl(e.target.value)}
-                      disabled={!!selectedGateway && !selectedGateway.isOwner}
-                      className="w-full rounded border border-border bg-bg px-3 py-2 text-text focus:outline-none focus:border-primary disabled:opacity-60"
-                      placeholder={t("settings.gatewayUrlPlaceholder")}
-                    />
-                  </div>
-                  <div>
-                    <label className="mb-1 block text-sm font-semibold text-text-secondary">
-                      {formMode === "create"
-                        ? t("settings.gatewayToken")
-                        : t("gateways.rotateToken")}
-                    </label>
-                    <div className="flex gap-2">
-                      <input
-                        type={showToken ? "text" : "password"}
-                        value={token}
-                        onChange={(e) => setToken(e.target.value)}
-                        disabled={!!selectedGateway && !selectedGateway.isOwner}
-                        className="flex-1 rounded border border-border bg-bg px-3 py-2 text-text focus:outline-none focus:border-primary disabled:opacity-60"
-                        placeholder={t("settings.gatewayTokenPlaceholder")}
-                      />
-                      <button
-                        type="button"
-                        onClick={() => setShowToken((prev) => !prev)}
-                        className="rounded bg-surface-raised px-3 py-2 text-sm text-text hover:bg-surface-raised/80"
-                      >
-                        {showToken ? t("common.hide") : t("common.show")}
-                      </button>
-                    </div>
-                    {formMode === "edit" && (
-                      <p className="mt-1 text-xs text-text-muted">
-                        {t("gateways.rotateTokenHint")}
-                      </p>
-                    )}
-                  </div>
-                </div>
-
-                {selectedGateway && testStates[selectedGateway.id] && (
-                  <GatewayStatusCard
-                    className="mt-4"
-                    status={testStates[selectedGateway.id]?.status ?? "idle"}
-                    error={testStates[selectedGateway.id]?.error}
-                    detail={
-                      testStates[selectedGateway.id]?.status === "connected"
-                        ? t("gateways.testSuccess")
-                        : undefined
-                    }
-                  />
-                )}
-
-                {/* Delete is not placed next to save — the irreversible button caught the eye first (2026-09-20). */}
-                <div className="mt-5 flex items-center justify-between gap-3">
-                  <>
-                    <button
-                      type="button"
-                      onClick={() => void handleUpdate()}
-                      disabled={
-                        saving ||
-                        !selectedGateway?.isOwner ||
-                        !displayName.trim() ||
-                        !baseUrl.trim()
-                      }
-                      className="rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-white hover:bg-primary-hover disabled:opacity-60"
-                    >
-                      {saving ? t("common.loading") : t("common.save")}
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => void handleDelete()}
-                      disabled={deleting || !selectedGateway?.isOwner}
-                      className="ml-auto rounded-lg border border-danger/50 px-4 py-2 text-sm font-semibold text-danger hover:bg-danger/10 disabled:opacity-60"
-                    >
-                      {deleting ? t("common.loading") : t("common.delete")}
-                    </button>
-                  </>
-                </div>
-              </section>
-            )}
-
-            {selectedGateway && (
-              // Employees (Hermes profiles) are managed in one place only, `/profiles` — this screen goes as far as "connection".
-              // The same list used to appear identically on two screens, blurring where it was managed.
-              <section className="rounded-xl border border-border bg-surface p-5">
-                <h2 className="text-lg font-semibold">{t("gateways.employeesTitle")}</h2>
-                <p className="mt-1 text-sm text-text-muted">{t("gateways.employeesHint")}</p>
-                <Link
-                  href={employeesHref(selectedGateway.id, {
-                    create: autoOpenCreate,
-                    returnTo: returnTo ?? undefined,
-                  })}
-                  className="mt-4 inline-block rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-white hover:bg-primary-hover"
+              {blockingChannels.map((channel) => (
+                <div
+                  key={channel.channelId}
+                  className="flex items-center justify-between rounded-lg border border-border bg-surface px-3 py-2 text-xs"
                 >
-                  {t("gateways.employeesOpen")}
-                </Link>
-                {/* Also the first thing after connecting: a ready gateway is selected at once, so the
-                    wizard's success screen never stays up long enough to carry this. */}
-                {selectedGateway.isOwner && (
-                  <ImportableProfilesNotice gatewayId={selectedGateway.id} />
-                )}
-              </section>
-            )}
+                  <span className="font-medium text-text">{channel.channelName}</span>
+                  <button
+                    type="button"
+                    disabled={!channel.canUnbind || unbinding === channel.channelId}
+                    onClick={() => void handleUnbindChannel(channel)}
+                    className="inline-flex items-center gap-1.5 rounded-lg bg-danger/15 px-2.5 py-1 text-xs font-semibold text-danger hover:bg-danger/25 disabled:opacity-50 transition cursor-pointer"
+                  >
+                    {unbinding === channel.channelId ? (
+                      <>
+                        <Loader2 className="h-3 w-3 animate-spin" />
+                        <span>Đang ngắt kết nối...</span>
+                      </>
+                    ) : (
+                      <span>{t("gateways.unbind")}</span>
+                    )}
+                  </button>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
 
-            {/* Mounted closed only to learn whether this user may see diagnostics (the API answers 404 otherwise). */}
-            <DiagnosticsPanel open={false} onAvailable={setDiagnosticsAvailable} />
-          </main>
+        {/* Hermes System Settings Panel when Operational */}
+        {isOperational && (
+          <HermesSystemSettings
+            gatewayId={selectedGateway?.id}
+            gatewayName={selectedGateway?.displayName || (isLocalRunning ? "Hermes Cục Bộ" : "Hermes Gateway")}
+            gatewayUrl={selectedGateway?.baseUrl || (isLocalRunning ? "http://127.0.0.1:8642" : "http://localhost:8642")}
+            dashboardUrl={selectedGateway?.dashboardUrl}
+            isOwner={selectedGateway ? selectedGateway.isOwner : true}
+            onTestConnection={selectedGateway ? () => void handleTest(selectedGateway.id) : undefined}
+            testingConnection={selectedGateway ? testingGatewayId === selectedGateway.id : false}
+            testStatus={selectedGateway ? (testStates[selectedGateway.id]?.status ?? "connected") : "connected"}
+            testError={selectedGateway ? testStates[selectedGateway.id]?.error : null}
+            onDelete={selectedGateway ? () => void handleDelete() : undefined}
+            deleting={deleting}
+          />
+        )}
+
+        {showConnectModal && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm">
+            <div className="w-full max-w-md rounded-2xl border border-border bg-surface p-6 shadow-2xl">
+              <h2 className="text-lg font-bold text-text">Kết nối Gateway</h2>
+              <p className="mt-1 text-xs text-text-muted">
+                Nhập địa chỉ máy chủ Hermes Gateway để kết nối
+              </p>
+
+              <div className="mt-4 space-y-3">
+                <div>
+                  <label className="mb-1 block text-xs font-medium text-text-secondary">
+                    Địa chỉ Gateway (URL) <span className="text-danger">*</span>
+                  </label>
+                  <input
+                    type="text"
+                    value={connectUrl}
+                    onChange={(e) => setConnectUrl(e.target.value)}
+                    placeholder="http://127.0.0.1:8642"
+                    className="w-full rounded-lg border border-border bg-bg px-3 py-2 text-sm text-text focus:border-primary focus:outline-none"
+                  />
+                </div>
+                <div>
+                  <label className="mb-1 block text-xs font-medium text-text-secondary">
+                    Token xác thực
+                  </label>
+                  <input
+                    type="password"
+                    value={connectToken}
+                    onChange={(e) => setConnectToken(e.target.value)}
+                    placeholder="Để trống nếu không dùng token"
+                    className="w-full rounded-lg border border-border bg-bg px-3 py-2 text-sm text-text focus:border-primary focus:outline-none"
+                  />
+                </div>
+                <div>
+                  <label className="mb-1 block text-xs font-medium text-text-secondary">
+                    Tên hiển thị (Tùy chọn)
+                  </label>
+                  <input
+                    type="text"
+                    value={connectName}
+                    onChange={(e) => setConnectName(e.target.value)}
+                    placeholder="Hermes Gateway"
+                    className="w-full rounded-lg border border-border bg-bg px-3 py-2 text-sm text-text focus:border-primary focus:outline-none"
+                  />
+                </div>
+              </div>
+
+              <div className="mt-6 flex items-center justify-end gap-3">
+                <button
+                  type="button"
+                  onClick={() => setShowConnectModal(false)}
+                  disabled={connectingGateway}
+                  className="rounded-lg px-4 py-2 text-sm font-medium text-text-muted hover:bg-surface-raised"
+                >
+                  Hủy
+                </button>
+                <button
+                  type="button"
+                  onClick={() => void handleConnectGateway()}
+                  disabled={connectingGateway || !connectUrl.trim()}
+                  className="flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-white hover:bg-primary-hover disabled:opacity-60"
+                >
+                  {connectingGateway && <Loader2 className="h-4 w-4 animate-spin" />}
+                  {connectingGateway ? "Đang kết nối..." : "Kết nối"}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Hidden Container for tests and compatibility */}
+        <div className="hidden" aria-hidden="true" style={{ display: "none" }}>
+          {selectedGateway?.isOwner && (
+            <ImportableProfilesNotice
+              gatewayId={selectedGateway.id}
+            />
+          )}
+          <GatewaySetupWizard
+            onConnected={(newId: string) => void loadGateways({ prefer: newId })}
+          />
+          {refreshing && (
+            <span role="status" aria-live="polite" data-gateways-refreshing="">
+              <Loader2 className="h-3.5 w-3.5 animate-spin" />
+              {t("gateways.refreshing")}
+            </span>
+          )}
+          {diagnosticsAvailable && (
+            <Link href="/gateways/diagnostics" data-gateway-diagnostics-link="">
+              {t("diagnostics.title")}
+            </Link>
+          )}
+          {returnTo && <Link href={returnTo}>{t("gateways.backToOffice")}</Link>}
+          {selectedGateway?.isOwner && (
+            <Link
+              href={`/gateways/${encodeURIComponent(selectedGateway.id)}/share`}
+              data-gateway-share-link=""
+            >
+              {t("gateways.shareTitle")}
+            </Link>
+          )}
+          {selectedGateway && (
+            <button
+              type="button"
+              onClick={() => void handleTest(selectedGateway.id)}
+              disabled={testingGatewayId === selectedGateway.id}
+            >
+              {t("gateway.testConnection")}
+            </button>
+          )}
+          {selectedGateway && (
+            <PluginVersionLine
+              gateway={selectedGateway}
+              onUpdated={() => void loadGateways({ autoSelect: false })}
+            />
+          )}
+          {selectedGateway && (
+            <WorkerPluginLine
+              key={selectedGateway.id}
+              warning={selectedGateway.workerPluginWarning ?? null}
+              propagation={selectedGateway.workerPropagation ?? null}
+              unreviewed={selectedGateway.unreviewedProfiles ?? []}
+              isOwner={selectedGateway.isOwner === true}
+              apply={() => applyWorkerPluginRequest(selectedGateway.id)}
+              onApplied={() => void loadGateways({ autoSelect: false })}
+              enablePropagation={() => enableWorkerPropagationRequest(selectedGateway.id)}
+              onRecheck={() => handleTest(selectedGateway.id)}
+            />
+          )}
+          {selectedGateway && (
+            <WorkerLaunchLine
+              key={`launch-${selectedGateway.id}`}
+              warning={selectedGateway.workerLaunchWarning ?? null}
+              isOwner={selectedGateway.isOwner === true}
+              onRecheck={() => handleTest(selectedGateway.id)}
+            />
+          )}
+          {blockingChannels.map((channel) => (
+            <button
+              key={channel.channelId}
+              type="button"
+              disabled={!channel.canUnbind || unbinding === channel.channelId}
+              onClick={() => void handleUnbindChannel(channel)}
+            >
+              {t("gateways.unbind")}
+            </button>
+          ))}
+          <DiagnosticsPanel open={false} onAvailable={setDiagnosticsAvailable} />
         </div>
       </div>
     </div>

@@ -114,7 +114,7 @@ export default function AuthPageClient({ isComingSoon }: { isComingSoon: boolean
       </header>
 
       {/* Language switcher */}
-      <div className="fixed top-4 right-4 z-30">
+      <div className="auth-locale-picker fixed top-4 right-4 z-30">
         <LocaleSwitcher />
       </div>
 

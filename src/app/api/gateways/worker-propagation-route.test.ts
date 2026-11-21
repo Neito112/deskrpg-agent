@@ -13,7 +13,11 @@ const home = mkdtempSync(path.join(tmpdir(), "worker-propagation-route-"));
 process.env.DESKRPG_HOME = home;
 process.env.SQLITE_PATH = path.join(home, "test.db");
 process.env.DB_TYPE = "sqlite";
-process.on("exit", () => rmSync(home, { recursive: true, force: true }));
+process.on("exit", () => {
+  try {
+    rmSync(home, { recursive: true, force: true });
+  } catch {}
+});
 
 function req(
   gatewayId: string,

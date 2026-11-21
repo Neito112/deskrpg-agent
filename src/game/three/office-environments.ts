@@ -152,8 +152,8 @@ export type OfficeEnvironmentId = (typeof OFFICE_ENVIRONMENTS)[number]["id"];
 type OfficeEnvironment = (typeof OFFICE_ENVIRONMENTS)[number];
 export type EnvironmentLabel = { name: string; description: string };
 
-/** ja/zh display labels. ko and en live on the environment itself. */
-const ENVIRONMENT_LABELS: Record<"ja" | "zh", Record<OfficeEnvironmentId, EnvironmentLabel>> = {
+/** ja/zh/vi display labels. ko and en live on the environment itself. */
+const ENVIRONMENT_LABELS: Record<"ja" | "zh" | "vi", Record<OfficeEnvironmentId, EnvironmentLabel>> = {
   ja: {
     trading: {
       name: "総合商社",
@@ -185,6 +185,28 @@ const ENVIRONMENT_LABELS: Record<"ja" | "zh", Record<OfficeEnvironmentId, Enviro
       description: "设有胡桃木办公桌、圆桌会议与接待休息区的高管室",
     },
     publishing: { name: "出版社", description: "书架间的编辑席与一起读稿的长桌" },
+  },
+  vi: {
+    trading: {
+      name: "Công ty thương mại tổng hợp",
+      description: "Văn phòng chuẩn mực kết hợp các cụm bàn làm việc, ghế điều hành và không gian hội họp",
+    },
+    agency: {
+      name: "Creative Agency",
+      description: "Studio mở kết nối khu chụp ảnh, khu sáng tạo, sản xuất và sảnh thư giãn",
+    },
+    tech: {
+      name: "Startup công nghệ",
+      description: "Văn phòng đội ngũ phát triển với bàn làm việc tập trung và không gian họp sprint",
+    },
+    executive: {
+      name: "Văn phòng điều hành",
+      description: "Phòng điều hành với bàn làm việc gỗ óc chó, bàn họp tròn và sảnh tiếp khách",
+    },
+    publishing: {
+      name: "Nhà xuất bản",
+      description: "Bàn biên tập giữa các giá sách và bàn đọc duyệt bản thảo cùng nhau",
+    },
   },
 };
 

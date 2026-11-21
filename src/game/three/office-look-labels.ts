@@ -5,10 +5,10 @@ export type LookLabel = { name: string; subtitle: string };
 type LookCategoryId = (typeof LOOK_CATEGORIES)[number]["id"];
 
 /**
- * ja/zh display labels by look id. ko and en live on the look itself (`name`/`subtitle`, `nameEn`/`subtitleEn`).
- * Chinese keeps the romanized name: the characters are Korean given names with no fixed hanzi.
+ * ja/zh/vi display labels by look id. ko and en live on the look itself (`name`/`subtitle`, `nameEn`/`subtitleEn`).
+ * Chinese and Vietnamese keep the romanized name: the characters are Korean given names with no fixed hanzi.
  */
-const LOOK_LABELS: Record<"ja" | "zh", Record<string, LookLabel>> = {
+const LOOK_LABELS: Record<"ja" | "zh" | "vi", Record<string, LookLabel>> = {
   ja: {
     "office-jun": { name: "ソジュン", subtitle: "初出勤の高揚 · ネイビースーツと社員証" },
     "office-tae": { name: "テオ", subtitle: "現場を知るベテラン · シャツと緩めたネクタイ" },
@@ -152,9 +152,61 @@ const LOOK_LABELS: Record<"ja" | "zh", Record<string, LookLabel>> = {
     "office-yumin": { name: "Yumin", subtitle: "合作经理 · 波浪发与无领带西装" },
     "office-garam": { name: "Garam", subtitle: "作者经纪 · 马尾与宽松大衣" },
   },
+  vi: {
+    "office-jun": { name: "Jun", subtitle: "Ngày đầu đi làm · Âu phục xanh navy và thẻ nhân viên" },
+    "office-tae": { name: "Tae", subtitle: "Đồng nghiệp kỳ cựu · Áo sơ mi xắn tay và cà vạt nới lỏng" },
+    "office-seo": { name: "Seorin", subtitle: "Bản lĩnh điềm tĩnh · Âu phục màu than và tóc đuôi ngựa" },
+    "office-min": { name: "Minjae", subtitle: "Chỉn chu từng chi tiết · Âu phục kẻ ca-rô và kính tròn" },
+    "office-do": { name: "Doyun", subtitle: "Chỗ dựa vững chãi · Áo gile len và sơ mi" },
+    "office-yun": { name: "Yunseo", subtitle: "Nhà lãnh đạo kiên định · Áo khoác navy và quần ống rộng" },
+    "office-ha": { name: "Hakyung", subtitle: "Ý tưởng sắc sảo · Áo len vàng mù tạt và quần ống rộng" },
+    "office-jin": { name: "Jinwoo", subtitle: "Người làm sách · Áo măng tô màu lạc đà và cổ lọ" },
+    "office-eun": { name: "Eunchae", subtitle: "Tập trung ấm áp · Áo cardigan và chân váy xếp ly dài" },
+    "office-hyeon": { name: "Hyeonjin", subtitle: "Ung dung từng trải · Tóc bạch kim và âu phục ba mảnh sẫm màu" },
+    "office-nari": { name: "Nari", subtitle: "Nhà hoạch định quảng cáo · Áo sơ mi thắt nơ và váy ngang gối" },
+    "office-roan": { name: "Roan", subtitle: "Giám đốc nghệ thuật · Áo cổ lọ đen và áo khoác ca-rô" },
+    "office-soi": { name: "Soi", subtitle: "Chiến lược gia thương hiệu · Búi tóc cao và áo khoác hai hàng khuy" },
+    "office-yul": { name: "Yul", subtitle: "Copywriter · Tóc xoăn và gile len" },
+    "office-bomi": { name: "Bomi", subtitle: "Nhà sản xuất nội dung · Tóc tết và chân váy dài" },
+    "office-jiho": { name: "Jiho", subtitle: "Đạo diễn hình ảnh · Áo sơ mi và tai nghe tác nghiệp" },
+    "office-dami": { name: "Dami", subtitle: "Quản lý chiến dịch · Khăn lụa và tóc bob ngắn" },
+    "office-seul": { name: "Seula", subtitle: "Nghiên cứu thiết kế · Tóc dài và áo len dáng rộng" },
+    "office-kyu": { name: "Kyumin", subtitle: "Đối tác khách hàng · Âu phục sọc và cà vạt" },
+    "office-ara": { name: "Ara", subtitle: "Giám đốc sự kiện · Tóc đuôi ngựa và gile năng động" },
+    "office-ian": { name: "Ian", subtitle: "Kỹ sư Backend · Kính cận và áo hoodie" },
+    "office-rumi": { name: "Rumi", subtitle: "Kỹ sư Frontend · Tóc tết và hoodie" },
+    "office-gonu": { name: "Gonu", subtitle: "Kỹ sư QA · Áo sơ mi kẻ và sổ tay" },
+    "office-haena": { name: "Haena", subtitle: "Nhà khoa học dữ liệu · Áo blouse trắng và tóc búi" },
+    "office-woojin": { name: "Woojin", subtitle: "Chuyên viên IT · Tóc xoăn và quần ống rộng" },
+    "office-jua": { name: "Jua", subtitle: "Nhà thiết kế UX · Tóc gợn sóng và cardigan đính nơ" },
+    "office-taemin": { name: "Taemin", subtitle: "Scrum Master · Áo gile len và thẻ nhân viên" },
+    "office-sera": { name: "Sera", subtitle: "Kỹ sư bảo mật · Tóc dài và áo khoác cổ lọ" },
+    "office-hosu": { name: "Hosu", subtitle: "Nghiên cứu viên Robot · Tóc ngắn và áo blouse trắng" },
+    "office-yena": { name: "Yena", subtitle: "Quản lý cộng đồng · Tóc bob và hoodie dáng rộng" },
+    "office-sungho": { name: "Sungho", subtitle: "Giám đốc vận hành · Tóc rẽ ngôi hoa râm và âu phục hai hàng khuy" },
+    "office-hyejin": { name: "Hyejin", subtitle: "Giám đốc tài chính · Búi tóc cao và khăn quàng thanh lịch" },
+    "office-jungwon": { name: "Jungwon", subtitle: "Giám đốc nhân sự · Tóc bob hoa râm và áo len dáng dài" },
+    "office-seok": { name: "Seokhyun", subtitle: "Chủ tịch kinh doanh · Tóc gợn sóng và âu phục kẻ ca-rô" },
+    "office-mira": { name: "Mira", subtitle: "Giám đốc sáng tạo · Tóc dài và áo khoác hai hàng khuy" },
+    "office-kyung": { name: "Kyungsu", subtitle: "Giám đốc pháp chế · Tóc chải gọn gàng và gile may đo" },
+    "office-yeon": { name: "Yeonhwa", subtitle: "Chủ tịch hội đồng quản trị · Tóc búi hoa râm và áo khoác dạ" },
+    "office-dohun": { name: "Dohun", subtitle: "Nhà sáng lập · Tóc xoăn và hoodie thực tế" },
+    "office-suhye": { name: "Suhye", subtitle: "Giám đốc kinh doanh · Tóc đuôi ngựa và âu phục nổi bật" },
+    "office-jaewon": { name: "Jaewon", subtitle: "Cố vấn chiến lược · Tóc xoăn hoa râm và áo cổ lọ" },
+    "office-daeun": { name: "Daeun", subtitle: "Biên tập viên văn học · Tóc dài và chân váy dài" },
+    "office-jiseok": { name: "Jiseok", subtitle: "Biên tập viên dịch thuật · Tóc xoăn và gile kẻ ca-rô" },
+    "office-seona": { name: "Seona", subtitle: "Nhà thiết kế sách · Tóc tết và áo khoác xưởng may" },
+    "office-haram": { name: "Haram", subtitle: "Bản quyền quốc tế · Khăn lụa và âu phục hai hàng khuy" },
+    "office-chan": { name: "Chanyoung", subtitle: "Quản lý in ấn · Áo sơ mi và thẻ xưởng chế tác" },
+    "office-eunsol": { name: "Eunsol", subtitle: "Hiệu đính bản thảo · Búi tóc và cardigan len" },
+    "office-sejin": { name: "Sejin", subtitle: "Chuyên gia đàm phán · Tóc rẽ ngôi lệch và sọc mảnh pinstripe" },
+    "office-hyo": { name: "Hyoju", subtitle: "Phát hành hiệu sách · Tóc bob ngắn và gile thoải mái" },
+    "office-yumin": { name: "Yumin", subtitle: "Quản lý hợp tác · Tóc gợn sóng và âu phục cổ mở" },
+    "office-garam": { name: "Garam", subtitle: "Đại diện tác giả · Tóc đuôi ngựa và áo măng tô dáng rộng" },
+  },
 };
 
-const CATEGORY_LABELS: Record<"ja" | "zh", Record<LookCategoryId, string>> = {
+const CATEGORY_LABELS: Record<"ja" | "zh" | "vi", Record<LookCategoryId, string>> = {
   ja: {
     all: "すべて",
     classic: "クラシックスーツ",
@@ -168,6 +220,13 @@ const CATEGORY_LABELS: Record<"ja" | "zh", Record<LookCategoryId, string>> = {
     casual: "商务休闲",
     creative: "创意",
     leadership: "领导层",
+  },
+  vi: {
+    all: "Tất cả",
+    classic: "Âu phục cổ điển",
+    casual: "Trang phục công sở tự do",
+    creative: "Sáng tạo",
+    leadership: "Lãnh đạo",
   },
 };
 
@@ -196,7 +255,7 @@ export function lookCategoryLabel(id: LookCategoryId, locale: string | null | un
 /** Search text across all four languages, so a name typed in any language finds the look on any screen. */
 export function lookSearchText(look: OfficeLook): string {
   const parts = [look.name, look.subtitle, look.nameEn, look.subtitleEn];
-  for (const lang of ["ja", "zh"] as const) {
+  for (const lang of ["ja", "zh", "vi"] as const) {
     const label = LOOK_LABELS[lang][look.id];
     if (label) parts.push(label.name, label.subtitle);
   }
@@ -205,7 +264,7 @@ export function lookSearchText(look: OfficeLook): string {
 
 /** Ids without ja/zh labels. Exported for the completeness test. */
 export function looksMissingLabels(): string[] {
-  return OFFICE_LOOKS.filter((l) => !LOOK_LABELS.ja[l.id] || !LOOK_LABELS.zh[l.id]).map(
-    (l) => l.id,
-  );
+  return OFFICE_LOOKS.filter(
+    (l) => !LOOK_LABELS.ja[l.id] || !LOOK_LABELS.zh[l.id] || !LOOK_LABELS.vi[l.id],
+  ).map((l) => l.id);
 }

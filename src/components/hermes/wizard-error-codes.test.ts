@@ -4,6 +4,7 @@ import { describe, it } from "node:test";
 import en from "@/lib/i18n/locales/en";
 import ja from "@/lib/i18n/locales/ja";
 import ko from "@/lib/i18n/locales/ko";
+import vi from "@/lib/i18n/locales/vi";
 import zh from "@/lib/i18n/locales/zh";
 
 import {
@@ -18,13 +19,14 @@ import {
 // route emits is registered" guard only scans for a **literal** `errorCode: "..."` in
 // route source via regex. The plugin proxy routes carry `res.failure.code` through as a
 // dynamic value, so they're outside that guard's view — a missing translation passes silently.
-describe("wizard-error-codes — coverage across the 4 locales", () => {
-  it("every registered code has text in all 4 locales", () => {
+describe("wizard-error-codes — coverage across the 5 locales", () => {
+  it("every registered code has text in all 5 locales", () => {
     const locales: Array<[string, Record<string, string>]> = [
       ["ko", ko],
       ["en", en],
       ["ja", ja],
       ["zh", zh],
+      ["vi", vi],
     ];
     const missing: string[] = [];
     for (const code of WIZARD_ERROR_CODES) {
@@ -36,12 +38,13 @@ describe("wizard-error-codes — coverage across the 4 locales", () => {
     assert.deepEqual(missing, [], `번역이 없는 마법사 에러코드:\n  ${missing.join("\n  ")}`);
   });
 
-  it("the unknown fallback key is also present in all 4 locales", () => {
+  it("the unknown fallback key is also present in all 5 locales", () => {
     const locales: Array<[string, Record<string, string>]> = [
       ["ko", ko],
       ["en", en],
       ["ja", ja],
       ["zh", zh],
+      ["vi", vi],
     ];
     for (const [lang, dict] of locales) {
       assert.ok(dict["hermes.wizard.error.unknown"], `${lang} 에 unknown fallback 이 없습니다`);

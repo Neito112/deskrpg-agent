@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 import { normalizeLocale, translateServer } from "./server";
 
 test("normalizeLocale maps browser locale strings to supported locales", () => {
+  assert.equal(normalizeLocale("vi-VN"), "vi");
   assert.equal(normalizeLocale("ko-KR"), "ko");
   assert.equal(normalizeLocale("ja-JP"), "ja");
   assert.equal(normalizeLocale("zh-CN"), "zh");

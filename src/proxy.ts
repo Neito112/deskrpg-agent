@@ -19,7 +19,12 @@ function withoutIdentityHeaders(req: NextRequest): Headers {
 export async function proxy(req: NextRequest) {
   const { pathname } = req.nextUrl;
 
-  if (isPublic(pathname) || pathname.startsWith("/_next") || pathname.startsWith("/assets")) {
+  if (
+    isPublic(pathname) ||
+    pathname.startsWith("/_next") ||
+    pathname.startsWith("/assets") ||
+    pathname.startsWith("/rubber-hose")
+  ) {
     return NextResponse.next({ request: { headers: withoutIdentityHeaders(req) } });
   }
 

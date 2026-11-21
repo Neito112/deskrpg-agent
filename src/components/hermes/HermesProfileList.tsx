@@ -17,7 +17,6 @@ import type { CharacterAppearance } from "@/game/three/office-appearance";
 
 import { employeeDetailHref, hirePageHref } from "@/app/profiles/hire-navigation";
 import RosterAvatar from "../RosterAvatar";
-import HermesProfileImport from "./HermesProfileImport";
 import { profileStatusLabel } from "./profile-status";
 import { PROFILE_STATUS_BADGE_CLASS } from "./profile-status-style";
 
@@ -39,6 +38,8 @@ interface HermesProfileListProps {
   returnTo?: string | null;
   /** Called only when a profile is actually created (not on close/delete). */
   onCreated?: () => void;
+  onManageProfile?: (name: string) => void;
+  onHireClick?: () => void;
 }
 
 export default function HermesProfileList({
@@ -46,6 +47,8 @@ export default function HermesProfileList({
   canRegister,
   returnTo = null,
   onCreated,
+  onManageProfile,
+  onHireClick,
 }: HermesProfileListProps) {
   const t = useT();
 
@@ -152,6 +155,7 @@ export default function HermesProfileList({
           // (docs/standards.md "one feature, one page"). This button used to expand 4 steps above the list.
           <Link
             href={hirePageHref(gatewayId, { returnTo })}
+            onClick={onHireClick ? (e) => { e.preventDefault(); onHireClick(); } : undefined}
             className="rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-white hover:bg-primary-hover"
           >
             {t("hermes.wizard.openButton")}
@@ -191,6 +195,7 @@ export default function HermesProfileList({
                         an editor inline (docs/standards.md "one feature, one page"). */}
                     <Link
                       href={employeeDetailHref(gatewayId, profile.profileName)}
+                      onClick={onManageProfile ? (e) => { e.preventDefault(); onManageProfile(profile.profileName); } : undefined}
                       className="rounded bg-surface-raised px-3 py-1.5 text-xs font-semibold hover:bg-surface-raised/80"
                     >
                       {t("gateway.profile.manage")}
@@ -203,15 +208,6 @@ export default function HermesProfileList({
         </div>
       )}
 
-      {canRegister && (
-        <HermesProfileImport
-          gatewayId={gatewayId}
-          onImported={() => {
-            void loadProfiles();
-            onCreated?.();
-          }}
-        />
-      )}
 
       {canRegister ? (
         <div className="space-y-3 border-t border-border pt-4">

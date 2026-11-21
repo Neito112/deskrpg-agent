@@ -4,10 +4,12 @@ import en from "./locales/en";
 import ko from "./locales/ko";
 import zh from "./locales/zh";
 import ja from "./locales/ja";
+import vi from "./locales/vi";
 import { LOCALE_COOKIE_MAX_AGE, LOCALE_COOKIE_NAME, LOCALE_STORAGE_KEY } from "./constants";
 
-export type Locale = "en" | "ko" | "zh" | "ja";
+export type Locale = "en" | "ko" | "zh" | "ja" | "vi";
 export const LOCALES: { code: Locale; label: string }[] = [
+  { code: "vi", label: "Tiếng Việt" },
   { code: "en", label: "English" },
   { code: "ko", label: "한국어" },
   { code: "zh", label: "中文" },
@@ -15,7 +17,7 @@ export const LOCALES: { code: Locale; label: string }[] = [
 ];
 
 type TranslationMap = Record<string, string>;
-const translations: Record<Locale, TranslationMap> = { en, ko, zh, ja };
+const translations: Record<Locale, TranslationMap> = { en, ko, zh, ja, vi };
 
 interface I18nContextValue {
   locale: Locale;
@@ -45,7 +47,7 @@ function persistLocale(locale: Locale) {
   document.cookie = `${LOCALE_COOKIE_NAME}=${locale}; path=/; max-age=${LOCALE_COOKIE_MAX_AGE}; samesite=lax`;
 }
 
-function detectLocale(initialLocale: Locale): Locale {
+function detectLocale(initialLocale: Locale = "vi"): Locale {
   if (typeof window === "undefined") return initialLocale;
   try {
     const stored = localStorage.getItem(LOCALE_STORAGE_KEY);
@@ -56,9 +58,11 @@ function detectLocale(initialLocale: Locale): Locale {
   const cookieLocale = readCookieLocale();
   if (cookieLocale) return cookieLocale;
   const lang = navigator.language.slice(0, 2);
+  if (lang === "vi") return "vi";
   if (lang === "ko") return "ko";
   if (lang === "zh") return "zh";
   if (lang === "ja") return "ja";
+  if (lang === "en") return "en";
   return initialLocale;
 }
 
@@ -71,7 +75,7 @@ export function I18nProvider({
 }) {
   // The server-selected locale must also be used for the first client render.
   // Browser detection is only for standalone/client-only providers without that snapshot.
-  const [locale, setLocaleState] = useState<Locale>(() => initialLocale ?? detectLocale("en"));
+  const [locale, setLocaleState] = useState<Locale>(() => initialLocale ?? detectLocale("vi"));
 
   useEffect(() => {
     persistLocale(locale);
@@ -83,7 +87,7 @@ export function I18nProvider({
 
   const t = useCallback(
     (key: string, params?: Record<string, string | number>): string => {
-      let text = translations[locale][key] ?? translations.en[key] ?? key;
+      let text = translations[locale][key] ?? translations.vi[key] ?? translations.en[key] ?? key;
       if (params) {
         for (const [k, v] of Object.entries(params)) {
           text = text.replace(new RegExp(`\\{${k}\\}`, "g"), String(v));

@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="utf-8">
+  <title>DeskRPG</title>
+  <style>
+    *{box-sizing:border-box}
+    body{margin:0;background:#f3eee2;color:#09223f;font-family:system-ui;display:flex;flex-direction:column;align-items:center;justify-content:center;height:100vh;user-select:none;overflow:hidden}
+    .card{display:flex;flex-direction:column;align-items:center;background:#faf7ee;border:1px solid #d9d2c0;border-radius:12px;padding:36px 44px;box-shadow:0 8px 24px rgba(9,34,63,0.08)}
+    .spinner{width:40px;height:40px;border:3px solid #e4ddcc;border-top:3px solid #365e4b;border-right:3px solid #365e4b;border-radius:50%;animation:spin .8s cubic-bezier(.5,.1,.5,.9) infinite;margin-bottom:20px}
+    @keyframes spin{0%{transform:rotate(0deg)}100%{transform:rotate(360deg)}}
+    .badge{font-size:10px;font-weight:700;background:#e6eee2;color:#365e4b;border:1px solid #c8d9c3;border-radius:4px;padding:2px 8px;margin-bottom:10px;letter-spacing:.8px;text-transform:uppercase}
+    h2{margin:0 0 6px 0;font-size:20px;font-weight:700;color:#09223f;letter-spacing:-.3px}
+    p{margin:0;color:#5f666d;font-size:13px}
+  </style>
+</head>
+<body>
+  <div class="card">
+    <div class="spinner"></div>
+    <span class="badge" id="edition-badge">Desktop Edition</span>
+    <h2>DeskRPG</h2>
+    <p>Đang chuẩn bị môi trường văn phòng ảo...</p>
+  </div>
+  <script>
+    // Edition badge will be updated by main process via preload or we can detect from URL
+  </script>
+</body>
+</html>

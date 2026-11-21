@@ -13,8 +13,20 @@ import Link from "next/link";
 import { useT } from "@/lib/i18n";
 import { getLocalizedErrorMessage } from "@/lib/i18n/error-codes";
 import GatewayStatusCard, { type GatewayStatus } from "@/components/gateway/GatewayStatusCard";
+import CliRoutingSettings from "@/components/settings/CliRoutingSettings";
+import {
+  Bot,
+  CheckCircle2,
+  AlertCircle,
+  RefreshCw,
+  Key,
+  Eye,
+  EyeOff,
+  Sparkles,
+  ExternalLink,
+} from "lucide-react";
 
-type ChannelSettingsTab = "settings" | "members" | "gateway";
+type ChannelSettingsTab = "settings" | "members" | "gateway" | "ai-model";
 
 interface ChannelSettingsModalProps {
   channelId: string;
@@ -113,6 +125,91 @@ export default function ChannelSettingsModal({
     null,
   );
   const [gatewayError, setGatewayError] = useState("");
+
+  // AI Model & Provider settings
+  const [aiProvider, setAiProvider] = useState("nvidia");
+  const [aiModel, setAiModel] = useState("z-ai/glm-5.3-flash");
+  const [aiApiKey, setAiApiKey] = useState("");
+  const [aiBaseUrl, setAiBaseUrl] = useState("");
+  const [aiShowKey, setAiShowKey] = useState(false);
+  const [aiCurrentConfig, setAiCurrentConfig] = useState<{
+    model: string;
+    provider: string;
+    baseUrl: string;
+    hasKey: boolean;
+  } | null>(null);
+  const [aiProvidersList, setAiProvidersList] = useState<
+    Array<{
+      id: string;
+      name: string;
+      envKey: string;
+      keyUrl?: string;
+      defaultBaseUrl?: string;
+      models: string[];
+    }>
+  >([]);
+  const [aiLoading, setAiLoading] = useState(false);
+  const [aiSaving, setAiSaving] = useState(false);
+  const [aiMessage, setAiMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
+
+  const loadAiConfig = useCallback(async () => {
+    setAiLoading(true);
+    setAiMessage(null);
+    try {
+      const res = await fetch("/api/hermes/model-config");
+      const data = await res.json();
+      if (data.ok) {
+        setAiCurrentConfig(data.current);
+        setAiProvidersList(data.providers || []);
+        if (data.current.provider) setAiProvider(data.current.provider);
+        if (data.current.model) setAiModel(data.current.model);
+        if (data.current.baseUrl) setAiBaseUrl(data.current.baseUrl);
+      }
+    } catch {
+      // ignore
+    } finally {
+      setAiLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (tab === "ai-model") {
+      void loadAiConfig();
+    }
+  }, [tab, loadAiConfig]);
+
+  const handleSaveAiConfig = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!aiModel.trim()) {
+      setAiMessage({ type: "error", text: "Vui lòng nhập hoặc chọn tên Model AI" });
+      return;
+    }
+    setAiSaving(true);
+    setAiMessage(null);
+    try {
+      const res = await fetch("/api/hermes/model-config", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          provider: aiProvider,
+          model: aiModel.trim(),
+          apiKey: aiApiKey.trim(),
+          baseUrl: aiBaseUrl.trim() || undefined,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok || !data.ok) {
+        throw new Error(data.error || "Lưu cấu hình thất bại");
+      }
+      setAiMessage({ type: "success", text: data.message || "Đã lưu cài đặt model sang Hermes thành công!" });
+      setAiApiKey("");
+      await loadAiConfig();
+    } catch (err) {
+      setAiMessage({ type: "error", text: err instanceof Error ? err.message : "Có lỗi xảy ra khi lưu" });
+    } finally {
+      setAiSaving(false);
+    }
+  };
 
   const loadMembers = useCallback(async () => {
     setMembersLoading(true);
@@ -457,6 +554,13 @@ export default function ChannelSettingsModal({
           >
             {t("settings.gateway")}
           </button>
+          <button
+            onClick={() => setTab("ai-model")}
+            className={`flex-1 py-2 text-sm font-semibold flex items-center justify-center gap-1.5 ${tab === "ai-model" ? "text-info border-b-2 border-info" : "text-text-muted"}`}
+          >
+            <Sparkles size={14} />
+            Model & Key AI
+          </button>
         </div>
 
         <div className="flex-1 overflow-y-auto p-5">
@@ -663,7 +767,7 @@ export default function ChannelSettingsModal({
                 </div>
               )}
             </div>
-          ) : (
+          ) : tab === "gateway" ? (
             <div className="space-y-4">
               {gatewayLoading ? (
                 <p className="text-text-muted text-sm py-4 text-center">
@@ -858,6 +962,215 @@ export default function ChannelSettingsModal({
                   </div>
                 </>
               )}
+            </div>
+          ) : (
+            <div className="space-y-4">
+              {aiLoading ? (
+                <p className="text-text-muted text-sm py-8 text-center flex items-center justify-center gap-2">
+                  <RefreshCw size={15} className="animate-spin" />
+                  Đang tải cấu hình AI từ Hermes...
+                </p>
+              ) : (
+                <form onSubmit={handleSaveAiConfig} className="space-y-4">
+                  {/* Current status card */}
+                  <div className="rounded-lg border border-border bg-bg p-3.5 space-y-2">
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs font-semibold text-text-secondary uppercase tracking-wider flex items-center gap-1.5">
+                        <Bot size={14} className="text-primary" /> Trạng thái Hermes AI hiện tại
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => void loadAiConfig()}
+                        className="text-xs text-text-muted hover:text-text flex items-center gap-1 transition-colors"
+                        title="Tải lại trạng thái"
+                      >
+                        <RefreshCw size={12} className={aiLoading ? "animate-spin" : ""} />
+                        Làm mới
+                      </button>
+                    </div>
+                    <div className="flex flex-wrap items-center gap-2 pt-1">
+                      <span className="rounded bg-surface px-2.5 py-1 text-xs font-medium text-text border border-border">
+                        Model: <strong className="text-primary">{aiCurrentConfig?.model || "Chưa thiết lập"}</strong>
+                      </span>
+                      <span className="rounded bg-surface px-2.5 py-1 text-xs font-medium text-text border border-border">
+                        Provider: <strong>{aiCurrentConfig?.provider || "nvidia"}</strong>
+                      </span>
+                      <span
+                        className={`rounded px-2.5 py-1 text-[11px] font-semibold border ${
+                          aiCurrentConfig?.hasKey
+                            ? "bg-success/10 text-success border-success/30"
+                            : "bg-warning/10 text-warning border-warning/30"
+                        }`}
+                      >
+                        {aiCurrentConfig?.hasKey ? "✓ Đã lưu API Key" : "⚠ Chưa có API Key"}
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Provider selection */}
+                  <div>
+                    <label className="block text-sm font-semibold text-text-secondary mb-1.5">
+                      Nhà cung cấp AI (Provider)
+                    </label>
+                    <select
+                      value={aiProvider}
+                      onChange={(e) => {
+                        const nextP = e.target.value;
+                        setAiProvider(nextP);
+                        const prov = aiProvidersList.find((p) => p.id === nextP);
+                        if (prov && prov.models.length > 0) {
+                          setAiModel(prov.models[0]);
+                        }
+                        if (prov?.defaultBaseUrl) {
+                          setAiBaseUrl(prov.defaultBaseUrl);
+                        } else {
+                          setAiBaseUrl("");
+                        }
+                      }}
+                      className="w-full px-3 py-2 bg-bg border border-border rounded text-text focus:outline-none focus:border-primary-light text-sm"
+                    >
+                      {aiProvidersList.map((p) => (
+                        <option key={p.id} value={p.id}>
+                          {p.name}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  {/* Model selection / input */}
+                  <div>
+                    <div className="flex items-center justify-between mb-1.5">
+                      <label className="block text-sm font-semibold text-text-secondary">
+                        Tên Model AI (Model Name)
+                      </label>
+                      <span className="text-xs text-text-muted">Chọn gợi ý hoặc tự nhập tên</span>
+                    </div>
+                    <div className="space-y-2">
+                      <input
+                        type="text"
+                        value={aiModel}
+                        onChange={(e) => setAiModel(e.target.value)}
+                        placeholder="ví dụ: z-ai/glm-5.3-flash, gpt-4o, deepseek-chat..."
+                        className="w-full px-3 py-2 bg-bg border border-border rounded text-text focus:outline-none focus:border-primary-light text-sm"
+                        required
+                      />
+                      {/* Quick model pills */}
+                      {aiProvidersList.find((p) => p.id === aiProvider)?.models && (
+                        <div className="flex flex-wrap gap-1.5 pt-0.5">
+                          {aiProvidersList
+                            .find((p) => p.id === aiProvider)
+                            ?.models.map((m) => (
+                              <button
+                                key={m}
+                                type="button"
+                                onClick={() => setAiModel(m)}
+                                className={`text-[11px] px-2.5 py-1 rounded border transition-colors ${
+                                  aiModel === m
+                                    ? "bg-primary/20 border-primary text-primary font-semibold"
+                                    : "bg-surface hover:bg-surface-raised border-border text-text-muted"
+                                }`}
+                              >
+                                {m}
+                              </button>
+                            ))}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* API Key input */}
+                  <div>
+                    <div className="flex items-center justify-between mb-1.5">
+                      <label className="block text-sm font-semibold text-text-secondary flex items-center gap-1.5">
+                        <Key size={13} />
+                        API Key
+                      </label>
+                      {aiProvidersList.find((p) => p.id === aiProvider)?.keyUrl && (
+                        <a
+                          href={aiProvidersList.find((p) => p.id === aiProvider)?.keyUrl}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="text-xs text-primary hover:underline inline-flex items-center gap-1"
+                        >
+                          Lấy API Key tại đây <ExternalLink size={11} />
+                        </a>
+                      )}
+                    </div>
+                    <div className="relative">
+                      <input
+                        type={aiShowKey ? "text" : "password"}
+                        value={aiApiKey}
+                        onChange={(e) => setAiApiKey(e.target.value)}
+                        placeholder={
+                          aiCurrentConfig?.hasKey
+                            ? "•••••••••••••••• (Để trống nếu muốn giữ nguyên key cũ)"
+                            : "Nhập API Key của nhà cung cấp..."
+                        }
+                        className="w-full px-3 py-2 pr-10 bg-bg border border-border rounded text-text focus:outline-none focus:border-primary-light text-sm"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setAiShowKey(!aiShowKey)}
+                        className="absolute right-2.5 top-1/2 -translate-y-1/2 text-text-muted hover:text-text p-1"
+                      >
+                        {aiShowKey ? <EyeOff size={15} /> : <Eye size={15} />}
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Custom Base URL (Optional) */}
+                  <div>
+                    <label className="block text-xs font-semibold text-text-muted mb-1">
+                      Endpoint Base URL (Tùy chọn — Dành cho Ollama hoặc Proxy riêng)
+                    </label>
+                    <input
+                      type="text"
+                      value={aiBaseUrl}
+                      onChange={(e) => setAiBaseUrl(e.target.value)}
+                      placeholder="ví dụ: http://localhost:11434/v1 hoặc để trống để dùng mặc định"
+                      className="w-full px-3 py-1.5 bg-bg border border-border rounded text-text focus:outline-none focus:border-primary-light text-xs font-mono"
+                    />
+                  </div>
+
+                  {/* Status message */}
+                  {aiMessage && (
+                    <div
+                      className={`p-3 rounded-lg text-sm border flex items-start gap-2 ${
+                        aiMessage.type === "success"
+                          ? "bg-success/10 border-success/30 text-success"
+                          : "bg-danger/10 border-danger/30 text-danger"
+                      }`}
+                    >
+                      {aiMessage.type === "success" ? (
+                        <CheckCircle2 size={16} className="shrink-0 mt-0.5" />
+                      ) : (
+                        <AlertCircle size={16} className="shrink-0 mt-0.5" />
+                      )}
+                      <span>{aiMessage.text}</span>
+                    </div>
+                  )}
+
+                  {/* Submit button */}
+                  <button
+                    type="submit"
+                    disabled={aiSaving || aiLoading}
+                    className="w-full py-2.5 bg-primary hover:bg-primary-hover rounded-lg font-semibold text-white shadow-sm transition-colors flex items-center justify-center gap-2 disabled:opacity-50"
+                  >
+                    {aiSaving ? (
+                      <>
+                        <RefreshCw size={15} className="animate-spin" />
+                        Đang lưu và khởi động lại Hermes...
+                      </>
+                    ) : (
+                      <>
+                        <Sparkles size={15} />
+                        Lưu Cấu Hình AI Sang Hermes
+                      </>
+                    )}
+                  </button>
+                </form>
+              )}
+              <CliRoutingSettings />
             </div>
           )}
         </div>

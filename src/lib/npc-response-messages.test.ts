@@ -76,18 +76,20 @@ test("resolveNpcResponseChunk preserves streamed text when no system message cod
 
 // Registering a code without a translation shows the user the raw key string or an empty
 // bubble. The error-code side had this guard, but NPC system messages did not.
-test("every registered NPC system message code has a translation in all 4 locales", async () => {
-  const [ko, en, ja, zh] = await Promise.all([
+test("every registered NPC system message code has a translation in all 5 locales", async () => {
+  const [ko, en, ja, zh, vi] = await Promise.all([
     import("./i18n/locales/ko"),
     import("./i18n/locales/en"),
     import("./i18n/locales/ja"),
     import("./i18n/locales/zh"),
+    import("./i18n/locales/vi"),
   ]);
   const locales: Array<[string, Record<string, string>]> = [
     ["ko", ko.default],
     ["en", en.default],
     ["ja", ja.default],
     ["zh", zh.default],
+    ["vi", vi.default],
   ];
   const missing: string[] = [];
   for (const key of Object.values(TEST_CODES)) {

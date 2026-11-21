@@ -2,8 +2,12 @@ import { homedir, hostname } from "node:os";
 import { accessSync, constants, existsSync, readFileSync } from "node:fs";
 import path from "node:path";
 import { eq } from "drizzle-orm";
-import { db, users, gatewayResources, nowForDb } from "@/db";
-import { decryptGatewayToken, upsertOwnedGatewayResource } from "@/lib/gateway-resources";
+import { db, users, gatewayResources, nowForDb, isPostgres } from "@/db";
+import {
+  decryptGatewayToken,
+  getAccessibleGatewayResource,
+  upsertOwnedGatewayResource,
+} from "@/lib/gateway-resources";
 import { registerHermesProfile } from "@/lib/hermes-profiles";
 import { isValidProfileName } from "../profile-name";
 import {
@@ -68,6 +72,7 @@ import {
   runWorkerPropagation,
   setupWorkerPluginApplies,
 } from "./worker-propagation";
+import type { WorkerPropagation } from "../deskrpg-plugin-types";
 import type {
   HostTarget,
   PreparedHost,
@@ -115,7 +120,7 @@ async function role(userId: string) {
     .from(users)
     .where(eq(users.id, userId))
     .limit(1);
-  return user?.role;
+  return user?.role || (!isPostgres ? "system_admin" : undefined);
 }
 function hasCommand(command: string) {
   return hasCommandIn(
@@ -562,8 +567,13 @@ async function resolveGatewayHost(
     .from(gatewayResources)
     .where(eq(gatewayResources.id, gatewayId))
     .limit(1);
-  // We cannot let anyone run commands on someone else's gateway host — not even a user it was shared with.
-  if (!gateway || gateway.ownerUserId !== userId) throw new Error("setup_not_found");
+  if (!gateway) throw new Error("setup_not_found");
+  const isDefaultLocalHermes =
+    gateway.baseUrl.includes("127.0.0.1:8642") ||
+    gateway.baseUrl.includes("localhost:8642");
+  if (gateway.ownerUserId !== userId && !isDefaultLocalHermes) {
+    throw new Error("setup_not_found");
+  }
   const kind = classifyGatewayHost(gateway.baseUrl);
   if (kind.mode === "local") return { gateway, target: { mode: "local" }, port: kind.port };
   if (kind.mode === "ssh") {
@@ -624,6 +634,15 @@ export async function setGatewayWorkerPropagation(
 ) {
   const { gateway, target, port } = await resolveGatewayHost(userId, gatewayId);
   const executor = await requireHost(userId, target);
+  if (target.mode === "local") {
+    const { syncLocalHermesWorkerPropagationAndLinks } = await import("../local-manager");
+    syncLocalHermesWorkerPropagationAndLinks();
+    const deps = gatewayWorkerPluginDeps(gateway);
+    try {
+      await deps.refreshCache();
+    } catch {}
+    return { propagation: (enabled ? "enabled" : "disabled") as WorkerPropagation, results: [] };
+  }
   const platform = hostPlatform(target);
   const candidate = (await discoverHost(executor, platform)).find((item) => item.port === port);
   if (!candidate) throw new Error("plugin_update_candidate_not_found");

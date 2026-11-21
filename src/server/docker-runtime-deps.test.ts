@@ -36,7 +36,7 @@ function transitiveLocalDeps(entry: string): Set<string> {
       const resolved = [".ts", ".tsx", ".js", "/index.ts"]
         .map((ext) => (raw.endsWith(ext) ? raw : raw + ext))
         .find((cand) => existsSync(path.join(repoRoot, cand)));
-      if (resolved) queue.push(resolved);
+      if (resolved) queue.push(resolved.replace(/\\/g, "/"));
     }
   }
   return seen;

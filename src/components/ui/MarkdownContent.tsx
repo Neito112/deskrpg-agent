@@ -9,9 +9,11 @@ import { Copy, Check, Download } from "lucide-react";
 import { chatFileLink } from "@/lib/chat-file-link";
 import { chatUrlTransform } from "@/lib/markdown-url";
 import { soleLinkUrl } from "@/lib/link-preview/promote";
+import { isSlideUrl } from "@/lib/slide-links";
 import { useT } from "@/lib/i18n";
 
 import LinkPreviewCard from "./LinkPreviewCard";
+import SlideActionButton from "./SlideActionButton";
 
 // ─── Code block with copy button ────────────────────────────────────
 
@@ -96,8 +98,19 @@ function buildComponents(t: (key: string) => string): Components {
     ),
     p: ({ children, node }) => {
       const paragraph = <p className="mb-1.5 last:mb-0 leading-relaxed">{children}</p>;
-      // Only promotes a paragraph that consists solely of a link into a card — the check is in promote.ts, and on failure this paragraph is left as-is.
+      const childrenArr = (node?.children ?? []).filter(
+        (c) => !(c.type === "text" && !(c.value ?? "").trim())
+      );
+      if (childrenArr.length === 1 && childrenArr[0].type === "element" && childrenArr[0].tagName === "a") {
+        const href = typeof childrenArr[0].properties?.href === "string" ? childrenArr[0].properties.href : "";
+        if (isSlideUrl(href)) {
+          return <SlideActionButton href={href} compact={false} />;
+        }
+      }
       const url = soleLinkUrl(node);
+      if (url && isSlideUrl(url)) {
+        return <SlideActionButton href={url} compact={false} />;
+      }
       return url ? <LinkPreviewCard url={url} fallback={paragraph} /> : paragraph;
     },
     strong: ({ children }) => <strong className="font-bold">{children}</strong>,
@@ -113,6 +126,7 @@ function buildComponents(t: (key: string) => string): Components {
     li: ({ children }) => <li className="leading-relaxed">{children}</li>,
     a: ({ href, children }) => {
       const file = chatFileLink(href);
+      const isSlide = isSlideUrl(href);
       return (
         <>
           <a
@@ -123,7 +137,8 @@ function buildComponents(t: (key: string) => string): Components {
           >
             {children}
           </a>
-          {file && <DownloadLink href={file.href} filename={file.filename} label={download} />}
+          {isSlide && href && <SlideActionButton href={href} compact={true} />}
+          {file && !isSlide && <DownloadLink href={file.href} filename={file.filename} label={download} />}
         </>
       );
     },

@@ -872,7 +872,7 @@ export default function GatewaySetupWizard({
                   </span>
                 </label>
                 {/* This has a different role from importing: this checkbox issues a new key for a profile that has none. */}
-                {profile.canProvision && (
+                {profile.canProvision && profile.name !== "default" && (
                   <div className="ml-7">
                     <label className="flex items-start gap-2 text-sm">
                       <input

@@ -2,6 +2,7 @@
 @import "../styles/tokens.css";
 @import "../styles/theme-web.css";
 @import "../styles/theme-game.css";
+@import "../styles/theme-rubber-hose.css";
 
 @theme inline {
   /* Surface tokens → Tailwind utilities */
@@ -103,7 +104,7 @@ body {
   width: 100%;
 }
 .workspace-sidebar {
-  width: 220px;
+  width: 240px;
   flex-shrink: 0;
   height: 100dvh;
   position: sticky;
@@ -501,3 +502,103 @@ body {
     rotate: 0deg;
   }
 }
+
+/* ==========================================================================
+   Desktop Application Shell (Electron frameless window)
+   ========================================================================== */
+.app-titlebar {
+  -webkit-app-region: drag;
+  user-select: none;
+}
+
+.app-titlebar-nodrag {
+  -webkit-app-region: no-drag;
+}
+
+:root {
+  --app-titlebar-height: 0px;
+}
+
+:root[data-desktop="true"] {
+  --app-titlebar-height: 32px;
+  height: 100vh;
+  max-height: 100vh;
+  overflow: hidden;
+}
+
+:root[data-desktop="true"] body {
+  height: 100vh;
+  max-height: 100vh;
+  overflow: hidden;
+  margin: 0;
+  padding: 0;
+}
+
+:root[data-desktop="true"] .app-viewport {
+  height: calc(100vh - 32px);
+  max-height: calc(100vh - 32px);
+  overflow: hidden;
+  position: relative;
+  display: flex;
+  flex-direction: column;
+}
+
+:root[data-desktop="true"] .ui2-game {
+  height: 100% !important;
+  max-height: 100% !important;
+  width: 100% !important;
+}
+
+:root[data-desktop="true"] .ui2-game-header {
+  top: var(--app-titlebar-height, 32px) !important;
+}
+
+:root[data-desktop="true"] .header-menu {
+  top: calc(var(--app-titlebar-height, 32px) + var(--game-header-height, 48px) + 8px) !important;
+}
+
+:root[data-desktop="true"] .conversation-workspace {
+  top: calc(var(--app-titlebar-height, 32px) + var(--game-header-height, 48px)) !important;
+}
+
+:root[data-desktop="true"] [data-spawn-set-mode] {
+  top: calc(var(--app-titlebar-height, 32px) + var(--game-header-height, 48px)) !important;
+}
+
+:root[data-desktop="true"] .auth-locale-picker {
+  top: calc(var(--app-titlebar-height, 32px) + 1rem) !important;
+}
+
+:root[data-desktop="true"] .workspace-shell {
+  min-height: 100% !important;
+  height: 100% !important;
+  max-height: 100% !important;
+  overflow: hidden;
+}
+
+:root[data-desktop="true"] .workspace-sidebar {
+  height: 100% !important;
+  max-height: 100% !important;
+}
+
+:root[data-desktop="true"] .workspace-content {
+  height: 100% !important;
+  max-height: 100% !important;
+  overflow-y: auto;
+}
+
+:root[data-desktop="true"] .workspace-content > .min-h-screen {
+  min-height: 100% !important;
+}
+
+:root[data-desktop="true"] .commute-city-root {
+  min-height: 100% !important;
+  height: 100% !important;
+  max-height: 100% !important;
+}
+
+:root[data-desktop="true"] .app-viewport > .theme-web.min-h-screen {
+  min-height: 100% !important;
+  height: 100% !important;
+}
+

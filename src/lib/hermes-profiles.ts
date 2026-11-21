@@ -2,6 +2,9 @@
 // live gateway, and assembles authenticated HermesClient instances. Sits between the
 // DB (hermesProfiles/npcs/gatewayResources) and callers (API routes, socket dispatch).
 
+import fs from "node:fs";
+import os from "node:os";
+import path from "node:path";
 import { and, eq, inArray } from "drizzle-orm";
 
 import {
@@ -20,6 +23,7 @@ import {
 } from "@/lib/gateway-resources";
 import { parseDbJson } from "@/lib/db-json";
 import { HermesClient, HermesError } from "@/lib/hermes/hermes-client";
+import { getHermesHome } from "@/lib/hermes/local-manager";
 import type { HermesCapabilities } from "@/lib/hermes/types";
 import { isUniqueViolation } from "./db-unique-violation";
 import { pickOfficeLookForNewProfile } from "./profile-look-assignment";
@@ -244,6 +248,47 @@ export async function profileUsage(profileId: string): Promise<{
   return { npcs: rows.length, channels: new Set(rows.map((r) => r.channelId)).size };
 }
 
+export function removeProfileDiskDirectory(profileName: string): void {
+  if (!profileName || profileName === "default") return;
+
+  const candidateHomes = new Set<string>();
+  try {
+    candidateHomes.add(getHermesHome());
+  } catch {}
+
+  const homeDir = os.homedir();
+  if (homeDir) {
+    candidateHomes.add(path.join(homeDir, ".hermes"));
+  }
+
+  const localAppData =
+    process.env.LOCALAPPDATA || (homeDir ? path.join(homeDir, "AppData", "Local") : null);
+  if (localAppData) {
+    candidateHomes.add(path.join(localAppData, "hermes"));
+  }
+
+  for (const home of candidateHomes) {
+    const profileDir = path.join(home, "profiles", profileName);
+    if (fs.existsSync(profileDir)) {
+      if (process.platform === "win32") {
+        try {
+          // eslint-disable-next-line @typescript-eslint/no-require-imports
+          const { execSync } = require("node:child_process");
+          execSync(`cmd /c rmdir /s /q "${profileDir}"`, { stdio: "ignore", windowsHide: true });
+        } catch {
+          try {
+            fs.rmSync(profileDir, { recursive: true, force: true });
+          } catch {}
+        }
+      } else {
+        try {
+          fs.rmSync(profileDir, { recursive: true, force: true });
+        } catch {}
+      }
+    }
+  }
+}
+
 /**
  * Deletes a profile. Since the profile became the source of truth for NPCs, this is
  * effectively a **termination** — the CASCADE on `npcs.hermes_profile_id` also deletes that
@@ -294,9 +339,25 @@ export async function deleteHermesProfile(
     await db
       .delete(chatRoomMembers)
       .where(and(eq(chatRoomMembers.memberKind, "npc"), inArray(chatRoomMembers.memberId, npcIds)));
+    await db.delete(npcs).where(inArray(npcs.id, npcIds));
   }
 
   await db.delete(hermesProfiles).where(eq(hermesProfiles.id, profileId));
+
+  // Permanently delete profile directory on disk (never delete "default")
+  // to ensure deleted profiles are never resurrected on restart or re-sync.
+  if (row.profileName && row.profileName !== "default") {
+    // Mark as deleted to prevent re-sync
+    const hermesHome = getHermesHome();
+    const profilesDir = path.join(hermesHome, "profiles");
+    fs.writeFileSync(path.join(profilesDir, `${row.profileName}.deleted`), "", "utf-8");
+    try {
+      removeProfileDiskDirectory(row.profileName);
+    } catch (fsErr) {
+      console.warn(`[hermes-profiles] Failed to delete disk directory for profile ${row.profileName}:`, fsErr);
+    }
+  }
+
   return { ok: true, deletedNpcs: usage.npcs, channels: usage.channels };
 }
 
@@ -365,5 +426,12 @@ export async function getProfileClientForNpc(npcId: string): Promise<HermesClien
     .limit(1);
 
   if (!rows[0]) return null;
+  const isLocal = rows[0].baseUrl.includes("127.0.0.1") || rows[0].baseUrl.includes("localhost");
+  if (isLocal) {
+    try {
+      const { ensureHermesGatewayRunning } = await import("@/lib/hermes/local-manager");
+      await ensureHermesGatewayRunning();
+    } catch {}
+  }
   return buildProfileClient(rows[0]);
 }

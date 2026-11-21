@@ -81,7 +81,14 @@ import {
   pickHistoryCharacterId,
   type NpcHistoryMessage,
 } from "@/lib/npc-chat-history";
-import type { GatewayAttachment } from "@/lib/file-extractor";
+import {
+  extractFileContent,
+  buildFilePromptSection,
+  buildAttachments,
+  FILE_LIMITS,
+  type ExtractedFile,
+  type GatewayAttachment,
+} from "@/lib/file-extractor";
 
 const DEBUG_CHAT = process.env.DEBUG_CHAT === "1" || process.env.DEBUG_CHAT === "true";
 function chatLog(...args: unknown[]) {
@@ -512,12 +519,14 @@ export function resolveNpcInstructions(
     return composeNpcInstructions({
       meetingProtocol: oc.meetingProtocol,
       taskConfirmation: true,
+      dynamicSlideReport: true,
       locale: locale ?? null,
     });
   }
   return composeNpcInstructions({
     meetingProtocol: getDefaultMeetingProtocol(locale),
     taskConfirmation: true,
+    dynamicSlideReport: true,
     locale: locale ?? null,
   });
 }
@@ -697,6 +706,21 @@ async function streamNpcResponse(
         deriveHermesContextKey(sessionKey, sessionKeyPrefix || npcId),
         session.sessionRef,
       );
+
+      // Handle automatic HR actions (hire/train) from bot chat responses
+      try {
+        const { handleNpcHrAction } = await import("./hr-actions");
+        const ioServer = (socket as unknown as { server: import("socket.io").Server }).server;
+        void handleNpcHrAction({
+          response: response || "",
+          channelId: _channelId,
+          userId,
+          io: ioServer,
+        });
+      } catch (hrErr) {
+        console.warn("[npc] HR action error:", hrErr);
+      }
+
       return response || "";
     } catch (err) {
       if (preparedAdapter) throw err;
@@ -914,6 +938,19 @@ async function streamMeetingNpcResponse(
       onPersistError: (err) =>
         console.error(`[meeting] hermes session ref persist failed for NPC ${_name}:`, err),
     });
+
+    // Handle automatic HR actions (hire/train) from bot meeting responses
+    try {
+      const { handleNpcHrAction } = await import("./hr-actions");
+      void handleNpcHrAction({
+        response: fullText || "",
+        channelId,
+        userId,
+        io,
+      });
+    } catch (hrErr) {
+      console.warn("[meeting] HR action error:", hrErr);
+    }
   } catch (err) {
     console.error(`[meeting] ${dispatchKind} error for NPC ${_name}:`, err);
     room.messages.pop();
@@ -1301,6 +1338,14 @@ export function setupSocketHandlers(io: Server) {
       if (r.channels > 0) console.log("[seating] backfill", r);
     })
     .catch((err: unknown) => console.error("[seating] backfill failed:", err));
+
+  // Auto-connect local Hermes gateway if installed on the host and not yet connected.
+  void import("../lib/hermes/setup/auto-connect")
+    .then(({ autoConnectLocalHermes }) => autoConnectLocalHermes())
+    .then((gw) => {
+      if (gw) console.log("[hermes-auto-connect] auto-connected local gateway:", gw.displayName);
+    })
+    .catch((err: unknown) => console.error("[hermes-auto-connect] auto-connect failed:", err));
 
   io.on("connection", async (socket) => {
     const user = await authenticateSocket(socket);
@@ -1690,16 +1735,42 @@ export function setupSocketHandlers(io: Server) {
         const trimmed = chips.skills.length
           ? formatSkillChipLine(chips.skills, instruction)
           : instruction;
-        if (files?.length) {
-          socket.emit("npc:response", {
-            npcId,
-            chunk: "",
-            done: true,
-            messageCode: "attachment_feature_unavailable",
-          });
-          return;
+
+        let extractedFiles: ExtractedFile[] = [];
+        let fileAttachments: GatewayAttachment[] | undefined = undefined;
+        let filePromptText = "";
+        let filesSummary = "";
+
+        if (files && Array.isArray(files) && files.length > 0) {
+          try {
+            const validFiles = files.slice(0, FILE_LIMITS.maxFileCount);
+            for (const f of validFiles) {
+              if (!f || !f.data) continue;
+              if (f.size > FILE_LIMITS.maxFileSize) continue;
+              const buf = Buffer.isBuffer(f.data)
+                ? f.data
+                : ArrayBuffer.isView(f.data)
+                  ? Buffer.from(f.data.buffer, f.data.byteOffset, f.data.byteLength)
+                  : Buffer.from(f.data);
+              const extracted = await extractFileContent(
+                buf,
+                f.name || "file",
+                f.type || "application/octet-stream",
+                socketLocale(socket),
+              );
+              extractedFiles.push(extracted);
+            }
+            if (extractedFiles.length > 0) {
+              filePromptText = buildFilePromptSection(extractedFiles, socketLocale(socket));
+              fileAttachments = buildAttachments(extractedFiles);
+              filesSummary = `\n[📎 ${extractedFiles.map((ef) => ef.name).join(", ")}]`;
+            }
+          } catch (fileErr) {
+            console.error("[npc:chat] File extraction error:", fileErr);
+          }
         }
-        if (!trimmed && !data.attachmentIds?.length) return;
+
+        if (!trimmed && !data.attachmentIds?.length && extractedFiles.length === 0) return;
 
         // Rate limit
         const now = Date.now();
@@ -1879,9 +1950,15 @@ export function setupSocketHandlers(io: Server) {
             queueKey,
             identity: { requestId, sourceMessageId, npcId, npcName: npcConfig._name || npcId },
             prepare: () =>
-              appendNpcHistoryMessage(historyCharacterId, npcId, trimmed, "player", {
-                id: sourceMessageId,
-              }),
+              appendNpcHistoryMessage(
+                historyCharacterId,
+                npcId,
+                trimmed + filesSummary,
+                "player",
+                {
+                  id: sourceMessageId,
+                },
+              ),
             work: async (capture, isActive, signal) => {
               const responseSocket = new Proxy(socket, {
                 get(target, property) {
@@ -1920,7 +1997,7 @@ export function setupSocketHandlers(io: Server) {
                 }
                 body = expanded.message;
               }
-              const messageToSend = body;
+              const messageToSend = body + filePromptText;
 
               // Stream response via OpenClaw
               chatLog(
@@ -1932,7 +2009,7 @@ export function setupSocketHandlers(io: Server) {
                 npcConfig,
                 user.userId,
                 messageToSend,
-                undefined,
+                fileAttachments,
                 undefined,
                 undefined,
                 signal,

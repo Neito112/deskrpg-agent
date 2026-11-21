@@ -3,6 +3,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { db, hermesProfiles, users } from "@/db";
 import { and, eq } from "drizzle-orm";
 import { decryptGatewayToken, getAccessibleGatewayResource } from "@/lib/gateway-resources";
+import { removeProfileDiskDirectory } from "@/lib/hermes-profiles";
 import { createPluginClient } from "@/lib/hermes/plugin-client";
 import { isValidProfileName } from "@/lib/hermes/profile-name";
 import { getUserId } from "@/lib/internal-rpc";
@@ -76,6 +77,12 @@ export async function DELETE(
   await db
     .delete(hermesProfiles)
     .where(and(eq(hermesProfiles.gatewayId, id), eq(hermesProfiles.profileName, name)));
+
+  if (name !== "default") {
+    try {
+      removeProfileDiskDirectory(name);
+    } catch {}
+  }
 
   return NextResponse.json(res.data);
 }

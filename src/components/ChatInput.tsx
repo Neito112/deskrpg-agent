@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useRef, useCallback, useEffect, useMemo } from "react";
+import { Mic, MicOff, Paperclip, X } from "lucide-react";
 import { accentClasses, type ChatAccent } from "./chat-accent";
 import { useT } from "@/lib/i18n";
 import MentionEditor, {
@@ -30,6 +31,7 @@ export interface ChatInputProps {
   /** With `autoFocus`, a new value focuses the input again (e.g. the panel was asked to show it). */
   focusKey?: number;
   showFileUpload?: boolean;
+  onCustomFileUpload?: () => void;
   /** Accent color. Only pre-defined brand-token classes can be chosen — see `chat-accent.ts`. */
   accent?: ChatAccent;
   /**
@@ -70,6 +72,7 @@ export default function ChatInput({
   autoFocus = false,
   focusKey,
   showFileUpload = false,
+  onCustomFileUpload,
   accent = "npc",
   mentionCandidates,
   draftSegments,
@@ -109,9 +112,13 @@ export default function ChatInput({
   const adjustHeight = useCallback(() => {
     const el = textareaRef.current;
     if (!el) return;
+    if (!draft) {
+      el.style.height = "38px";
+      return;
+    }
     el.style.height = "auto";
     el.style.height = Math.min(el.scrollHeight, 120) + "px"; // max ~5 lines
-  }, []);
+  }, [draft]);
 
   useEffect(() => {
     adjustHeight();
@@ -180,6 +187,97 @@ export default function ChatInput({
     [handleSend],
   );
 
+  const [isDragging, setIsDragging] = useState(false);
+  const [isListening, setIsListening] = useState(false);
+  const recognitionRef = useRef<any>(null);
+
+  const handlePaste = useCallback((e: React.ClipboardEvent) => {
+    const items = e.clipboardData?.items;
+    if (!items) return;
+    const pastedFiles: File[] = [];
+    for (let i = 0; i < items.length; i++) {
+      if (items[i].kind === "file") {
+        const file = items[i].getAsFile();
+        if (file) pastedFiles.push(file);
+      }
+    }
+    if (pastedFiles.length > 0) {
+      e.preventDefault();
+      setFiles((prev) => [...prev, ...pastedFiles].slice(0, 3));
+    }
+  }, []);
+
+  const handleDragOver = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragging(true);
+  }, []);
+
+  const handleDragLeave = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragging(false);
+  }, []);
+
+  const handleDrop = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragging(false);
+    const droppedFiles = Array.from(e.dataTransfer.files);
+    if (droppedFiles.length > 0) {
+      setFiles((prev) => [...prev, ...droppedFiles].slice(0, 3));
+    }
+  }, []);
+
+  const toggleSpeechRecognition = useCallback(() => {
+    if (typeof window === "undefined") return;
+    const SpeechRecognition =
+      (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+    if (!SpeechRecognition) {
+      if (typeof window !== "undefined" && typeof (window as any).alert === "function") {
+        (window as any).alert("Trình duyệt không hỗ trợ Web Speech API. Vui lòng sử dụng Google Chrome hoặc Microsoft Edge.");
+      }
+      return;
+    }
+
+    if (isListening) {
+      recognitionRef.current?.stop();
+      setIsListening(false);
+      return;
+    }
+
+    try {
+      const recognition = new SpeechRecognition();
+      recognition.continuous = false;
+      recognition.interimResults = false;
+      recognition.lang = "vi-VN";
+
+      recognition.onstart = () => {
+        setIsListening(true);
+      };
+
+      recognition.onresult = (event: any) => {
+        const transcript = event.results[0]?.[0]?.transcript;
+        if (transcript) {
+          updateDraft((draft ? draft + " " : "") + transcript);
+        }
+        setIsListening(false);
+      };
+
+      recognition.onerror = (event: any) => {
+        console.error("Speech recognition error:", event.error);
+        setIsListening(false);
+      };
+
+      recognition.onend = () => {
+        setIsListening(false);
+      };
+
+      recognitionRef.current = recognition;
+      recognition.start();
+    } catch (err) {
+      console.error("Speech recognition start failed:", err);
+      setIsListening(false);
+    }
+  }, [isListening, draft, updateDraft]);
+
   const handleFileSelect = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     const selected = e.target.files;
     if (!selected) return;
@@ -191,6 +289,10 @@ export default function ChatInput({
   const removeFile = useCallback((idx: number) => {
     setFiles((prev) => prev.filter((_, i) => i !== idx));
   }, []);
+
+  const hasSpeech =
+    typeof window !== "undefined" &&
+    Boolean((window as any).SpeechRecognition || (window as any).webkitSpeechRecognition);
 
   const canSend =
     (draft.trim() || files.length > 0 || attachmentCount > 0 || skills.length > 0) &&
@@ -205,54 +307,61 @@ export default function ChatInput({
   const resolvedDisabledPlaceholder = disabledPlaceholder ?? t("chat.responding");
 
   return (
-    <div className="border-t border-border px-3 py-2" data-chat-scope={scope}>
+    <div
+      className={`relative border-t border-border px-3 py-2 transition-colors ${
+        isDragging ? "bg-primary/10 border-primary border-dashed" : ""
+      }`}
+      data-chat-scope={scope}
+      onDragOver={handleDragOver}
+      onDragLeave={handleDragLeave}
+      onDrop={handleDrop}
+      onPaste={handlePaste}
+    >
+      {/* Drag & drop visual hint */}
+      {isDragging && (
+        <div className="absolute inset-0 bg-surface/90 flex items-center justify-center z-10 pointer-events-none rounded border-2 border-dashed border-primary text-primary text-xs font-bold">
+          📎 Thả tệp tại đây để đính kèm (Tối đa 3 tệp)
+        </div>
+      )}
+
       {/* File preview */}
       {files.length > 0 && (
         <div className="flex gap-2 mb-2 flex-wrap">
           {files.map((f, i) => (
             <div
               key={i}
-              className="flex items-center gap-1 bg-surface rounded px-2 py-1 text-xs text-text-secondary"
+              className="flex items-center gap-1.5 bg-surface border border-border rounded-lg px-2.5 py-1 text-xs text-text-secondary shadow-sm"
             >
-              <span className="truncate max-w-[120px]">{f.name}</span>
-              <span className="text-text-dim">({(f.size / 1024).toFixed(0)}KB)</span>
+              <Paperclip className="w-3.5 h-3.5 text-primary shrink-0" />
+              <span className="truncate max-w-[140px] font-medium">{f.name}</span>
+              <span className="text-text-dim text-[11px]">({(f.size / 1024).toFixed(0)}KB)</span>
               <button
+                type="button"
                 onClick={() => removeFile(i)}
-                className="text-text-dim hover:text-danger ml-1"
+                className="text-text-dim hover:text-danger ml-1 p-0.5 rounded hover:bg-surface-raised"
                 aria-label={t("chat.removeFile")}
                 title={t("chat.removeFile")}
               >
-                x
+                <X className="w-3 h-3" />
               </button>
             </div>
           ))}
         </div>
       )}
 
-      <div className="flex items-end gap-2">
+      <div className="flex items-end gap-1.5 w-full min-w-0">
         {/* File upload button */}
         {showFileUpload && (
           <>
             <button
-              onClick={() => fileInputRef.current?.click()}
+              type="button"
+              onClick={() => (onCustomFileUpload ? onCustomFileUpload() : fileInputRef.current?.click())}
               disabled={disabled}
-              className="p-2 text-text-muted hover:text-text rounded hover:bg-white/10 shrink-0 self-end"
-              title={t("chat.attachFile")}
-              aria-label={t("chat.attachFile")}
+              className="h-[38px] w-[38px] flex items-center justify-center p-2 text-text-muted hover:text-text rounded-lg hover:bg-surface-raised shrink-0 self-end transition-colors"
+              title="Đính kèm tệp văn bản / hình ảnh"
+              aria-label="Đính kèm tệp"
             >
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                width="16"
-                height="16"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              >
-                <path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48" />
-              </svg>
+              <Paperclip className="w-4 h-4" />
             </button>
             <input
               ref={fileInputRef}
@@ -264,6 +373,30 @@ export default function ChatInput({
             />
           </>
         )}
+
+        {/* Voice Input (Microphone) button */}
+        <button
+          type="button"
+          onClick={toggleSpeechRecognition}
+          disabled={disabled || !hasSpeech}
+          className={`h-[38px] w-[38px] flex items-center justify-center p-2 rounded-lg shrink-0 self-end transition-all ${
+            !hasSpeech
+              ? "opacity-40 cursor-not-allowed text-text-dim"
+              : isListening
+                ? "bg-danger text-white animate-pulse"
+                : "text-text-muted hover:text-text hover:bg-surface-raised"
+          }`}
+          title={
+            !hasSpeech
+              ? "Trình duyệt không hỗ trợ Web Speech"
+              : isListening
+                ? "Đang lắng nghe... (Nhấn để dừng)"
+                : "Nhập bằng giọng nói (Microphone)"
+          }
+          aria-label="Nhập bằng giọng nói"
+        >
+          {isListening ? <MicOff className="w-4 h-4" /> : <Mic className="w-4 h-4" />}
+        </button>
 
         {/* Textarea or mention editor */}
         {useMentions ? (
@@ -309,7 +442,7 @@ export default function ChatInput({
             }
             rows={1}
             readOnly={disabled}
-            className={`flex-1 bg-surface text-text px-3 py-2 rounded-lg border focus:outline-none text-sm min-w-0 resize-none overflow-hidden leading-5 ${
+            className={`flex-1 bg-surface text-text px-3 py-2 rounded-lg border focus:outline-none text-sm min-w-0 resize-none overflow-hidden leading-5 min-h-[38px] ${
               disabled ? "border-border text-text-dim" : `border-border ${accentTheme.focusBorder}`
             }`}
             style={{ maxHeight: "120px" }}
@@ -323,7 +456,7 @@ export default function ChatInput({
             data-testid="chat-stop"
             onClick={onStop}
             aria-label={t("chat.stopResponse")}
-            className="px-3 py-2 rounded-lg font-semibold text-sm shrink-0 self-end transition-colors bg-surface-raised text-text border border-border hover:bg-surface"
+            className="h-[38px] px-3.5 flex items-center justify-center rounded-lg font-semibold text-sm shrink-0 whitespace-nowrap min-w-fit self-end transition-colors bg-surface-raised text-text border border-border hover:bg-surface select-none"
           >
             {t("chat.stop")}
           </button>
@@ -331,7 +464,7 @@ export default function ChatInput({
           <button
             onClick={handleSend}
             disabled={!canSend}
-            className={`px-3 py-2 rounded-lg font-semibold text-sm shrink-0 self-end transition-colors ${btnColor}`}
+            className={`h-[38px] px-3.5 flex items-center justify-center rounded-lg font-semibold text-sm shrink-0 whitespace-nowrap min-w-fit self-end transition-colors select-none ${btnColor}`}
           >
             {t("common.send")}
           </button>

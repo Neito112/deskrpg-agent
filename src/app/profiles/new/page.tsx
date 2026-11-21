@@ -54,7 +54,7 @@ function HireEmployeeContent() {
     let cancelled = false;
     void loadGatewayPluginState(gatewayId).then(({ row, pluginStatus: status }) => {
       if (cancelled) return;
-      setCanRegister(row?.isOwner === true);
+      setCanRegister(row ? row.isOwner !== false : true);
       setDashboardUrl(typeof row?.dashboardUrl === "string" ? row.dashboardUrl : null);
       setCloneDefaultProfile(row?.supportsProfileClone === true);
       setPluginStatus(status);

@@ -1,0 +1,44 @@
+appId: com.deskrpg.app
+productName: DeskRPG
+copyright: Copyright © 2026 Dante Labs
+
+directories:
+  output: dist
+  buildResources: electron
+
+extraResources:
+  - from: public
+    to: public
+    filter: ["**/*"]
+  - from: drizzle
+    to: drizzle
+    filter: ["**/*"]
+  - from: .env.example
+    to: .env.example
+  - from: .agents/skills
+    to: skills
+    filter: ["**/*"]
+
+win:
+  target:
+    - target: nsis
+      arch:
+        - x64
+  icon: public/favicon.ico
+  artifactName: ${productName}-${version}-${arch}.${ext}
+  requestedExecutionLevel: asInvoker
+
+nsis:
+  oneClick: false
+  perMachine: false
+  allowToChangeInstallationDirectory: true
+  createDesktopShortcut: true
+  createStartMenuShortcut: true
+  shortcutName: DeskRPG
+  uninstallDisplayName: DeskRPG
+  license: LICENSE.md
+  artifactName: ${productName}-Setup-${version}-${arch}.${ext}
+
+publish:
+  provider: generic
+  url: https://deskrpg.com/releases/

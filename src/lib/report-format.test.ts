@@ -3,18 +3,19 @@ import assert from "node:assert/strict";
 
 import { REPORT_FORMAT_HEADER, formatReportFormat, prefixReportFormat } from "./report-format";
 
-test("the report format rules cover all three of images, links, and markdown", () => {
+test("the report format rules cover natural communication, dynamic slides, images, and markdown", () => {
   const rules = formatReportFormat();
   assert.ok(rules.startsWith(REPORT_FORMAT_HEADER));
-  // Must instruct exactly the form the screen actually renders (MarkdownContent.tsx's img/a renderers).
+  // Must instruct natural communication, dynamic slide reporting, images, and markdown
+  assert.match(rules, /동료/);
+  assert.match(rules, /슬라이드/);
   assert.match(rules, /!\[설명\]\(URL\)/);
-  assert.match(rules, /한 줄에 URL 하나/);
   assert.match(rules, /마크다운/);
 });
 
 test("rules are made of single-line entries only — the prefix doesn't push the script back", () => {
   const lines = formatReportFormat().split("\n");
-  assert.ok(lines.length <= 5, `너무 길다: ${lines.length}줄`);
+  assert.ok(lines.length <= 7, `너무 길다: ${lines.length}줄`);
   for (const line of lines.slice(1)) assert.match(line, /^- /);
 });
 

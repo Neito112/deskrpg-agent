@@ -1,4 +1,4 @@
-import { db, groupMembers, groups, isPostgres, users } from "@/db";
+import { db, gatewayResources, gatewayShares, groupMembers, groupPermissions, groups, isPostgres, users } from "@/db";
 import { buildBootstrapActions, resolveBootstrapCompletion } from "@/lib/rbac/bootstrap";
 import { hashPassword } from "@/lib/password";
 import { signJWT, isSecureCookie } from "@/lib/jwt";
@@ -119,10 +119,11 @@ export async function POST(req: NextRequest) {
     defaultGroupCreated,
   });
 
-  if (completion.systemRole === "system_admin") {
+  const effectiveRole = !isPostgres ? "system_admin" : completion.systemRole;
+  if (effectiveRole === "system_admin") {
     await db
       .update(users)
-      .set({ systemRole: completion.systemRole })
+      .set({ systemRole: effectiveRole })
       .where(eq(users.id, createdUser.id));
   }
 
@@ -134,6 +135,17 @@ export async function POST(req: NextRequest) {
       approvedBy: createdUser.id,
       approvedAt: (isPostgres ? new Date() : new Date().toISOString()) as unknown as Date,
     });
+
+    await db
+      .insert(groupPermissions)
+      .values({
+        groupId: createdGroupId,
+        permissionKey: "create_channel",
+        effect: "allow",
+        createdBy: createdUser.id,
+        createdAt: (isPostgres ? new Date() : new Date().toISOString()) as unknown as Date,
+      })
+      .onConflictDoNothing();
   }
 
   // Auto-join default group as member for non-first users
@@ -156,11 +168,29 @@ export async function POST(req: NextRequest) {
         })
         .onConflictDoNothing();
     }
+
+    try {
+      const gateways = await db
+        .select({ id: gatewayResources.id })
+        .from(gatewayResources)
+        .where(eq(gatewayResources.lastValidationStatus, "valid"));
+      for (const gw of gateways) {
+        await db
+          .insert(gatewayShares)
+          .values({
+            gatewayId: gw.id,
+            userId: createdUser.id,
+            role: "admin",
+            createdAt: (isPostgres ? new Date() : new Date().toISOString()) as unknown as Date,
+          })
+          .onConflictDoNothing();
+      }
+    } catch {}
   }
 
   const user = {
     ...createdUser,
-    systemRole: completion.systemRole,
+    systemRole: effectiveRole,
   };
 
   const token = await signJWT({ userId: user.id, nickname: user.nickname });

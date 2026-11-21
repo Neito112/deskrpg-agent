@@ -95,7 +95,11 @@ export function toHistoryMessages(rows: StoredChatMessage[]): NpcHistoryMessage[
       content: row.content,
       // A missing createdAt doesn't drop the message — the order is already decided by the
       // query, and all that's lost here is the display timestamp.
-      timestamp: row.createdAt ? row.createdAt.getTime() : 0,
+      timestamp: row.createdAt
+        ? row.createdAt instanceof Date
+          ? row.createdAt.getTime()
+          : new Date(row.createdAt).getTime() || 0
+        : 0,
     });
   }
   return messages;

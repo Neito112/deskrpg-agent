@@ -80,6 +80,24 @@ export const SMALLTALK_LINES: Record<SmalltalkLocale, readonly (readonly [string
     ["{name}，散散步脑子都清醒了。", "是啊，{name}。真是不错的休息。"],
     ["{name}，好久不见，最近好吗？", "很好，{name}！谢谢关心。"],
   ],
+  vi: [
+    ["{name} ơi, chúc một ngày tốt lành nhé!", "{name} cũng vậy nha, chúc ngày mới thật vui!"],
+    ["{name} ơi, vươn vai giãn cơ chút không?", "Ý hay đấy {name}! Vai mình đang mỏi nhừ đây."],
+    ["{name} ơi, đã uống cà phê chưa?", "Chưa nữa! May mà có {name} nhắc mình mới nhớ."],
+    ["{name} ơi, hôm nay lại gặp rồi, vui quá!", "Mình cũng vậy, {name}. Cùng cố gắng hôm nay nhé!"],
+    ["{name} ơi, ăn trưa ngon miệng chứ?", "Ngon lắm! {name} cũng nhớ ăn uống đầy đủ nha."],
+    ["{name} ơi, ra ngoài hít thở chút không khí hả?", "Đúng rồi {name}. Đi dạo một vòng thấy dễ chịu hẳn."],
+    ["{name} ơi, hôm nay cảm thấy thế nào?", "Rất tốt! Còn {name} thì sao?"],
+    ["{name} ơi, hôm nay vất vả nhiều rồi.", "Cảm ơn {name}. Chúng ta cùng cố gắng nào!"],
+    ["{name} ơi, nhớ uống chút nước nhé!", "Cảm ơn {name}, bạn cũng vậy nha!"],
+    ["{name} ơi, nghỉ ngơi một chút đi.", "Ý kiến hay đấy, {name}!"],
+    ["{name} ơi, ngồi phía cửa sổ thích thật đấy.", "Đúng vậy {name}. Cũng để mắt nghỉ ngơi một lát."],
+    ["{name} ơi, buổi chiều cùng cố gắng nhé!", "{name} cũng vậy nha! Cứ từ từ giải quyết từng việc."],
+    ["{name} ơi, hôm nay mặc đồ đẹp thế!", "Cảm ơn {name}! Nghe vậy thấy vui cả ngày luôn."],
+    ["{name} ơi, có thèm ăn vặt chút gì không?", "Đúng lúc mình đang nghĩ tới luôn đấy, {name}!"],
+    ["{name} ơi, đi dạo một chút thấy đầu óc tỉnh táo hẳn.", "Chuẩn luôn {name}. Nghỉ ngơi thế này thật sảng khoái."],
+    ["{name} ơi, dạo này khỏe chứ?", "Mình khỏe, {name}! Cảm ơn bạn đã hỏi thăm nha."],
+  ],
 };
 export type SmalltalkActor = {
   id: string;

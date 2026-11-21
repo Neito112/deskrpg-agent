@@ -11,14 +11,16 @@ import test from "node:test";
 import en from "@/lib/i18n/locales/en";
 import ja from "@/lib/i18n/locales/ja";
 import ko from "@/lib/i18n/locales/ko";
+import vi from "@/lib/i18n/locales/vi";
 import zh from "@/lib/i18n/locales/zh";
 
-const LOCALES: Record<string, Record<string, string>> = { ko, en, ja, zh };
+const LOCALES: Record<string, Record<string, string>> = { ko, en, ja, zh, vi };
 const REFRESH: Record<string, RegExp> = {
   ko: /새로고침/,
   en: /refresh|reload/i,
   ja: /再読み込み|リロード|更新して/,
   zh: /刷新/,
+  vi: /tải lại|làm mới/i,
 };
 /** Messages shown while the connection is down. */
 const OUTAGE_KEYS = [

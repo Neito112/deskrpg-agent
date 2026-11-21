@@ -513,9 +513,9 @@ const MentionEditor = forwardRef<MentionEditorHandle, Props>(function MentionEdi
           sync();
         }}
         onBlur={() => setQuery(null)}
-        className={`min-h-[36px] max-h-[120px] overflow-y-auto whitespace-pre-wrap break-words bg-surface text-text px-3 py-2 rounded-lg border focus:outline-none text-sm leading-5 ${
+        className={`min-h-[38px] max-h-[120px] w-full max-w-full overflow-y-auto overflow-x-hidden whitespace-pre-wrap break-words bg-surface text-text px-3 py-2 rounded-lg border focus:outline-none text-sm leading-5 ${
           disabled ? "border-border text-text-dim" : `border-border ${accentTheme.focusBorder}`
-        } ${empty ? "before:content-[attr(data-placeholder)] before:text-text-dim before:pointer-events-none" : ""}`}
+        } ${empty ? "h-[38px] before:content-[attr(data-placeholder)] before:text-text-dim before:pointer-events-none before:truncate before:block before:select-none" : "h-auto"}`}
       />
     </div>
   );

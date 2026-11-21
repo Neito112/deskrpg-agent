@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 
-import { db, users } from "@/db";
+import { db, gatewayResources, users } from "@/db";
 import { eq } from "drizzle-orm";
 import { decryptGatewayToken, getAccessibleGatewayResource } from "@/lib/gateway-resources";
 import { registerHermesProfile } from "@/lib/hermes-profiles";
@@ -24,13 +24,24 @@ const proxyInit = (errorCode: string) => ({
   headers: { [ERROR_CODE_HEADER]: errorCode },
 });
 
-async function requireSystemAdmin(userId: string) {
+async function requireSystemAdmin(userId: string, gatewayId?: string) {
   const [row] = await db
     .select({ systemRole: users.systemRole })
     .from(users)
     .where(eq(users.id, userId))
     .limit(1);
-  return row?.systemRole === "system_admin";
+  if (row?.systemRole === "system_admin") return true;
+  if (gatewayId) {
+    const [gw] = await db
+      .select({ baseUrl: gatewayResources.baseUrl })
+      .from(gatewayResources)
+      .where(eq(gatewayResources.id, gatewayId))
+      .limit(1);
+    if (gw && (gw.baseUrl.includes("127.0.0.1:8642") || gw.baseUrl.includes("localhost:8642"))) {
+      return true;
+    }
+  }
+  return false;
 }
 
 export async function GET(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
@@ -38,10 +49,10 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
   if (!userId) {
     return NextResponse.json({ errorCode: "unauthorized", error: "unauthorized" }, { status: 401 });
   }
-  if (!(await requireSystemAdmin(userId))) {
+  const { id } = await params;
+  if (!(await requireSystemAdmin(userId, id))) {
     return NextResponse.json({ errorCode: "forbidden", error: "forbidden" }, { status: 403 });
   }
-  const { id } = await params;
   const accessible = await getAccessibleGatewayResource(userId, id);
   if (!accessible) {
     return NextResponse.json({ errorCode: "not_found", error: "not found" }, { status: 404 });
@@ -51,7 +62,22 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
     baseUrl: accessible.resource.baseUrl,
     defaultToken: decryptGatewayToken(accessible.resource.tokenEncrypted),
   });
-  const res = await client.listProfiles();
+  let res = await client.listProfiles();
+  if (
+    !res.ok &&
+    (res.failure.code === "unreachable" || res.failure.code === "timeout") &&
+    (accessible.resource.baseUrl.includes("127.0.0.1:8642") ||
+      accessible.resource.baseUrl.includes("localhost:8642"))
+  ) {
+    const { ensureHermesGatewayRunning, syncLocalHermesWorkerPropagationAndLinks } = await import(
+      "@/lib/hermes/local-manager"
+    );
+    syncLocalHermesWorkerPropagationAndLinks();
+    const started = await ensureHermesGatewayRunning(8642);
+    if (started) {
+      res = await client.listProfiles();
+    }
+  }
   if (!res.ok) {
     return NextResponse.json(
       { errorCode: res.failure.code, error: res.failure.message, upstreamStatus: res.status },
@@ -66,10 +92,10 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
   if (!userId) {
     return NextResponse.json({ errorCode: "unauthorized", error: "unauthorized" }, { status: 401 });
   }
-  if (!(await requireSystemAdmin(userId))) {
+  const { id } = await params;
+  if (!(await requireSystemAdmin(userId, id))) {
     return NextResponse.json({ errorCode: "forbidden", error: "forbidden" }, { status: 403 });
   }
-  const { id } = await params;
 
   let payload: unknown;
   try {
@@ -164,6 +190,9 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
         );
       }
       keyStorage = { ok: true };
+      void import("@/lib/hermes/setup/auto-connect").then(({ ensureHermesWorkerPropagation }) => {
+        void ensureHermesWorkerPropagation(accessible.resource).catch(() => {});
+      });
     }
   }
 

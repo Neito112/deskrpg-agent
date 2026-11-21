@@ -51,7 +51,8 @@ next-env.d.ts
 !.github/workflows/
 .claude/
 .codex/
-.agents/
+.agents/*
+!.agents/skills/
 .gemini/
 /.dryforge/
 # Local development tools only (including scripts/local/backlog/); not product code.
@@ -96,3 +97,8 @@ __pycache__/
 !/deploy/hostinger/
 !/deploy/office/
 deploy/hostinger/catalog-submission.md
+nul
+
+
+.vendor/
+

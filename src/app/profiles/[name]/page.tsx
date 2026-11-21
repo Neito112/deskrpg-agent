@@ -3,9 +3,11 @@
 import { Suspense, useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
+import { Download } from "lucide-react";
 
 import NpcHireWizard from "@/components/hermes/NpcHireWizard";
 import PluginLockNotice from "@/components/hermes/PluginLockNotice";
+import SandboxSettingsCard from "@/components/hermes/SandboxSettingsCard";
 import { profileStatusLabel } from "@/components/hermes/profile-status";
 import { PROFILE_STATUS_BADGE_CLASS } from "@/components/hermes/profile-status-style";
 import type { PluginStatus } from "@/lib/hermes/plugin-capability";
@@ -246,6 +248,15 @@ function EmployeeDetailContent() {
             >
               {testing ? t("gateway.testing") : t("gateway.profile.test")}
             </button>
+            <a
+              href={`/api/profiles/${encodeURIComponent(profileName)}/export?gatewayId=${encodeURIComponent(gatewayId)}`}
+              download
+              className="rounded border border-primary/30 bg-primary/10 px-3 py-1.5 text-xs font-semibold text-primary hover:bg-primary/20 transition-colors inline-flex items-center gap-1.5"
+              title="Xuất hồ sơ bot và toàn bộ lịch sử trò chuyện ra tệp tin sao lưu"
+            >
+              <Download size={13} />
+              <span>Xuất Profile & Lịch sử</span>
+            </a>
           </div>
         </header>
 
@@ -282,6 +293,11 @@ function EmployeeDetailContent() {
                 />
               </section>
             )}
+
+            <SandboxSettingsCard
+              profileName={profile.profileName}
+              displayName={profile.displayName || profile.profileName}
+            />
 
             {sections.includes("account") && (
               <section className="space-y-2 rounded-xl border border-border bg-surface p-5">

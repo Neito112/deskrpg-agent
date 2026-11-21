@@ -138,6 +138,7 @@ const RESPONSE_LANGUAGE_SECTION_TITLES = [
   "응답 언어 계약",
   "応答言語ルール",
   "回复语言约束",
+  "Quy ước ngôn ngữ phản hồi",
 ];
 
 const RESPONSE_LANGUAGE_SECTION: Record<ServerLocale, { title: string; lines: string[] }> = {
@@ -167,6 +168,13 @@ const RESPONSE_LANGUAGE_SECTION: Record<ServerLocale, { title: string; lines: st
     lines: [
       "所有直接聊天、会议轮次、任务汇报、总结和追问都必须使用中文。",
       "除非人类明确用其他语言重写这些人格文档，否则把这条规则视为强约束。",
+    ],
+  },
+  vi: {
+    title: "Quy ước ngôn ngữ phản hồi",
+    lines: [
+      "Tất cả các cuộc trò chuyện trực tiếp, lượt phát biểu trong cuộc họp, báo cáo công việc, tóm tắt và câu hỏi tiếp theo đều phải được viết bằng tiếng Việt.",
+      "Coi đây là quy tắc cố định của không gian làm việc trừ khi người dùng chủ ý viết lại tài liệu nhân cách bằng một ngôn ngữ khác.",
     ],
   },
 };

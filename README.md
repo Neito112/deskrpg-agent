@@ -1,6 +1,6 @@
 # DeskRPG
 
-한국어 문서: [README.ko.md](README.ko.md)
+한국어 문서: [README.ko.md](README.ko.md) | Tiếng Việt: [README.vi.md](README.vi.md)
 
 <img src="public/readme/home-screenshot.png" alt="DeskRPG home screen" width="100%" />
 
@@ -38,7 +38,7 @@ DeskRPG does not bundle an agent runtime. It attaches to the Hermes gateway you 
 - Walk into the meeting space on each office map. Meeting mode keeps the original room and characters, fades walls that block the camera, and follows the current speaker; floor control, hand raising and exportable minutes remain available.
 - Track Hermes-owned kanban cards from planning through execution and review to completion. Call NPCs over and receive card completion or blocked-work notices in office chat.
 - Manage each NPC's Hermes cron jobs: create schedules from blueprints, pause or resume them, run them immediately, inspect run history and receive results in office chat.
-- Share the office with other people (multiplayer, groups and role-based access), in Korean, English, Japanese or Chinese.
+- Share the office with other people (multiplayer, groups and role-based access), in Vietnamese, Korean, English, Japanese or Chinese.
 
 ## Screenshots
 

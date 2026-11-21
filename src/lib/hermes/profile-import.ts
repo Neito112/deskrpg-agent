@@ -68,7 +68,17 @@ export async function listImportableProfiles(
 ): Promise<{ ok: true; profiles: { name: string; description: string }[] } | Refusal> {
   const gate = await ownedGateway(userId, gatewayId);
   if (!gate.ok) return gate;
-  const res = await gate.client.listProfiles();
+  let res = await gate.client.listProfiles();
+  if (!res.ok && (res.failure.code === "unreachable" || res.failure.code === "timeout")) {
+    const access = await getAccessibleGatewayResource(userId, gatewayId);
+    if (access && (access.resource.baseUrl.includes("127.0.0.1:8642") || access.resource.baseUrl.includes("localhost:8642"))) {
+      const { ensureHermesGatewayRunning } = await import("@/lib/hermes/local-manager");
+      const started = await ensureHermesGatewayRunning(8642);
+      if (started) {
+        res = await gate.client.listProfiles();
+      }
+    }
+  }
   if (!res.ok) {
     // The list lives on the root listener, so a 404/405 means the plugin is not loaded or too old.
     const code =

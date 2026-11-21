@@ -33,8 +33,12 @@ export default function ParticipantRow({
       >
         <RosterAvatar appearance={appearance ?? null} size={30} />
         <span className="min-w-0 flex-1">
-          <span className="block truncate text-sm font-medium text-text">{name}</span>
-          <span className="block truncate text-[11px] text-text-dim">{detail}</span>
+          <span className="block truncate text-sm font-medium text-text" title={name}>
+            {name}
+          </span>
+          <span className="block truncate text-[11px] text-text-dim" title={detail}>
+            {detail}
+          </span>
         </span>
       </button>
       {onOpenMenu && (

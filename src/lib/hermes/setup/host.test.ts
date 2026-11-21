@@ -129,6 +129,7 @@ import { setupHostError } from "@/components/gateway/setup-copy";
 import enText from "@/lib/i18n/locales/en";
 import jaText from "@/lib/i18n/locales/ja";
 import koText from "@/lib/i18n/locales/ko";
+import viText from "@/lib/i18n/locales/vi";
 import zhText from "@/lib/i18n/locales/zh";
 function fixture(
   script: string,
@@ -618,6 +619,7 @@ test("a host timeout explains that Hermes may still be getting ready, in every l
     ["en", enText],
     ["ja", jaText],
     ["zh", zhText],
+    ["vi", viText],
   ] as const)
     assert.equal(
       setupHostError(locale, "command_timeout"),

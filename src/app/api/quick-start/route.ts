@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { and, asc, eq } from "drizzle-orm";
 
-import { channelMembers, channels, db, groupMembers, groups, users } from "@/db";
+import { channelMembers, channels, db, gatewayResources, gatewayShares, groupMembers, groupPermissions, groups, isPostgres, users } from "@/db";
 import { getUserId } from "@/lib/internal-rpc";
 import { ensureMyCharacter } from "@/lib/my-character";
 import { QUICK_START_ENVIRONMENT_ID, quickStartChannelName } from "@/lib/quick-start";
@@ -52,8 +52,43 @@ async function expectOk(response: Response): Promise<Record<string, unknown>> {
   return payload;
 }
 
+async function ensureDefaultGroupAllowsCreateChannel() {
+  try {
+    const [defaultGroup] = await db
+      .select({ id: groups.id, createdBy: groups.createdBy })
+      .from(groups)
+      .where(eq(groups.isDefault, true))
+      .limit(1);
+    if (defaultGroup) {
+      const [existingPerm] = await db
+        .select({ id: groupPermissions.id })
+        .from(groupPermissions)
+        .where(
+          and(
+            eq(groupPermissions.groupId, defaultGroup.id),
+            eq(groupPermissions.permissionKey, "create_channel"),
+          ),
+        )
+        .limit(1);
+      if (!existingPerm) {
+        await db.insert(groupPermissions).values({
+          groupId: defaultGroup.id,
+          permissionKey: "create_channel",
+          effect: "allow",
+          createdBy: defaultGroup.createdBy,
+          createdAt: (isPostgres ? new Date() : new Date().toISOString()) as unknown as Date,
+        });
+      }
+    }
+  } catch (err) {
+    console.warn("Could not ensure default group create_channel permission:", err);
+  }
+}
+
 /** The group to create the channel in. Look first at the user's memberships with management rights — the permission verdict itself is made by the channel route. */
 async function resolveGroupId(userId: string): Promise<string | null> {
+  await ensureDefaultGroupAllowsCreateChannel();
+
   const memberships = await db
     .select({ groupId: groupMembers.groupId, role: groupMembers.role, isDefault: groups.isDefault })
     .from(groupMembers)
@@ -72,7 +107,21 @@ async function resolveGroupId(userId: string): Promise<string | null> {
     .from(groups)
     .where(eq(groups.isDefault, true))
     .limit(1);
-  return fallback?.id ?? null;
+  if (fallback?.id) {
+    await db
+      .insert(groupMembers)
+      .values({
+        groupId: fallback.id,
+        userId,
+        role: "member",
+        approvedBy: userId,
+        approvedAt: (isPostgres ? new Date() : new Date().toISOString()) as unknown as Date,
+        joinedAt: (isPostgres ? new Date() : new Date().toISOString()) as unknown as Date,
+      })
+      .onConflictDoNothing();
+    return fallback.id;
+  }
+  return null;
 }
 
 async function ensureChannel(req: NextRequest, userId: string, nickname: string | null) {
@@ -103,6 +152,32 @@ async function ensureChannel(req: NextRequest, userId: string, nickname: string 
     );
   }
 
+  const [gateway] = await db
+    .select({ id: gatewayResources.id, ownerUserId: gatewayResources.ownerUserId })
+    .from(gatewayResources)
+    .where(eq(gatewayResources.lastValidationStatus, "valid"))
+    .limit(1);
+
+  if (gateway && gateway.ownerUserId !== userId) {
+    try {
+      const [existingShare] = await db
+        .select({ id: gatewayShares.id })
+        .from(gatewayShares)
+        .where(and(eq(gatewayShares.gatewayId, gateway.id), eq(gatewayShares.userId, userId)))
+        .limit(1);
+      if (!existingShare) {
+        await db.insert(gatewayShares).values({
+          gatewayId: gateway.id,
+          userId,
+          role: "admin",
+          createdAt: (isPostgres ? new Date() : new Date().toISOString()) as unknown as Date,
+        });
+      }
+    } catch (shareErr) {
+      console.warn("Could not ensure gateway share for user:", shareErr);
+    }
+  }
+
   // The channel route builds the environment layout directly from code — no template table involved.
   const { POST } = await import("../channels/route");
   const payload = await expectOk(
@@ -112,6 +187,7 @@ async function ensureChannel(req: NextRequest, userId: string, nickname: string 
         isPublic: true,
         groupId,
         environmentId: QUICK_START_ENVIRONMENT_ID,
+        ...(gateway ? { gatewayConfig: { gatewayId: gateway.id } } : {}),
       }),
     ),
   );
@@ -156,6 +232,13 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    try {
+      const { autoConnectLocalHermes } = await import("@/lib/hermes/setup/auto-connect");
+      await autoConnectLocalHermes(userId);
+    } catch (err) {
+      console.warn("Quick start auto-connect error:", err);
+    }
+
     const mine = await ensureMyCharacter(userId, user.nickname);
     const characterId = mine.id;
     const channelId = await ensureChannel(req, userId, user.nickname);
@@ -169,6 +252,20 @@ export async function POST(req: NextRequest) {
       .limit(1);
     if (owned) {
       try {
+        const { getChannelGatewayBinding, bindGatewayToChannel } = await import("@/lib/gateway-resources");
+        const binding = await getChannelGatewayBinding(channelId);
+        if (!binding) {
+          const [gw] = await db
+            .select({ id: gatewayResources.id })
+            .from(gatewayResources)
+            .where(eq(gatewayResources.lastValidationStatus, "valid"))
+            .limit(1);
+          if (gw) {
+            await bindGatewayToChannel({ channelId, gatewayId: gw.id, boundByUserId: userId });
+            const { hireGatewayProfilesIntoChannel } = await import("@/lib/npc-roster");
+            await hireGatewayProfilesIntoChannel(channelId, gw.id);
+          }
+        }
         await seatUnplacedNpcs(channelId);
       } catch (seatErr) {
         console.warn("Quick start could not seat NPCs:", seatErr);

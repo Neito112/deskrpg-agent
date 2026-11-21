@@ -78,12 +78,14 @@ const RENDERER_TEXT = {
     en: "Conversations in view",
     ja: "表示中の会話",
     zh: "当前画面中的对话",
+    vi: "Cuộc trò chuyện trong tầm nhìn",
   },
   kanbanBoard: {
     ko: "Kanban · 클릭하여 이동",
     en: "Kanban · click to walk over",
     ja: "Kanban · クリックして移動",
     zh: "Kanban · 点击前往",
+    vi: "Kanban · nhấn để di chuyển tới",
   },
 } as const;
 
@@ -1436,7 +1438,7 @@ export class OfficeRenderer {
       bubble = document.createElement("span");
     label.className = "office-actor-label";
     name.className = "office-actor-name";
-    bubble.className = "office-actor-bubble";
+    bubble.className = "office-actor-bubble office-speech-bubble";
     label.type = "button";
     label.append(name);
     bubble.tabIndex = 0;

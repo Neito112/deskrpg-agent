@@ -12,8 +12,10 @@ test("promptLocale keeps Korean only for ko and falls back to English", () => {
 });
 
 test("languageName names every supported locale in English", () => {
+  assert.equal(languageName("vi"), "Vietnamese");
   assert.equal(languageName("ko"), "Korean");
   assert.equal(languageName("ja"), "Japanese");
   assert.equal(languageName("zh-TW"), "Chinese");
+  assert.equal(languageName("en"), "English");
   assert.equal(languageName(null), "English");
 });

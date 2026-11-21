@@ -1,19 +1,8 @@
 /**
  * The **wording rules for when an employee reports to the user**.
  *
- * The screen is already ready to receive it — employee messages render as markdown
- * (`src/components/ui/ChatBubble.tsx:38`) and `![](URL)` draws as `<img>`
- * (`src/components/ui/MarkdownContent.tsx:103-105`). The only thing missing was the
- * instruction to actually output it that way.
- *
  * Follows the same principle as `user-context.ts`: it's a **message prefix**, not a
- * system prompt, and doesn't override a Hermes profile's SOUL. Leaving the rule to each
- * profile's identity would make it vary by employee, so it lives here in one place, and
- * every conversation path (DM, whole office, meeting) uses the same string.
- *
- * Not added to the kanban card path (Dante's decision, 2026-09-20) — that path's
- * injection point is the human-readable card body (`kanban-routes.ts:208`), and a rule
- * paragraph would clutter the screen there.
+ * system prompt, and doesn't override a Hermes profile's SOUL.
  */
 
 import { promptLocale, type PromptLocale } from "@/lib/i18n/prompt-locale";
@@ -29,15 +18,17 @@ export const REPORT_FORMAT_HEADER = HEADERS.ko;
 /** Keep entries as single lines only — a long prefix pushes the real script back. */
 const RULES: Record<PromptLocale, readonly string[]> = {
   ko: [
+    "동료로서 자연스럽고 정중하게 소통하며, 도구명·API·CLI·내부 파일 경로는 언급하지 않는다.",
+    "분석 보고·진행 상황·종합 요약은 3-5개 핵심 요약과 함께 인터랙티브 슬라이드([슬라이드 열기](URL)) 링크를 제공한다.",
+    "중간 단계를 설명하지 않고 최종 결과만 전달한다.",
     "이미지는 브라우저가 열 수 있는 URL 로 ![설명](URL) 마크다운으로 넣는다. 서버 파일 경로만 적지 않는다.",
-    "이미지 URL 이 없으면 결과물로 저장한 뒤 그 링크를 쓴다. 만들지 못했으면 만들었다고 말하지 않는다.",
-    "참고한 사이트는 문장 안에 묻지 말고 한 줄에 URL 하나씩 적는다.",
     "표·코드·목록은 마크다운 문법을 쓴다.",
   ],
   en: [
+    "Communicate naturally and politely as a real colleague. Never mention tool names, APIs, CLIs, or internal system paths.",
+    "All analytical reports, progress summaries, and wrap-ups must be delivered with an executive 3-5 bullet summary and an interactive slide link ([Open Slide Deck](URL)).",
+    "Deliver only the final cohesive response without narrating intermediate execution steps.",
     "Put images in as ![description](URL) markdown with a URL the browser can open. Do not write only a server file path.",
-    "If there is no image URL, save it as an artifact and use that link. If you could not make it, do not say you made it.",
-    "List referenced sites one URL per line instead of burying them in sentences.",
     "Use markdown syntax for tables, code and lists.",
   ],
 };

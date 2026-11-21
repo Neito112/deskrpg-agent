@@ -3,7 +3,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useT } from "@/lib/i18n";
 import type { ReportItem } from "@/game/report-queue";
 import DialogReportSummary from "./chat/DialogReportSummary";
-import { Pencil, UserMinus, RotateCcw, Undo2 } from "lucide-react";
+import { Pencil, UserMinus, RotateCcw, Undo2, Settings, Copy, Check, Volume2, VolumeX, Sparkles } from "lucide-react";
 import type { NpcChatMessage } from "./NpcDialog";
 import ChatInput from "./conversation/ConversationChatInput";
 import type { AttachmentSendPayload } from "./conversation/use-conversation-attachments";
@@ -54,6 +54,14 @@ import {
 } from "./chat/skill-chip-view";
 import { createKanbanApi, KanbanApiError, type BoardResponse } from "./kanban/kanban-api";
 import { formatMention } from "@/lib/conversation/mention";
+
+const PROMPT_STARTERS = [
+  { icon: "💡", label: "Tóm tắt", prompt: "Hãy tóm tắt ngắn gọn các công việc và tiến độ của bạn." },
+  { icon: "📋", label: "Kế hoạch", prompt: "Hãy giúp tôi lên kế hoạch chi tiết cho các đầu việc tiếp theo." },
+  { icon: "💻", label: "Viết code & debug", prompt: "Hãy hỗ trợ tôi kiểm tra mã nguồn, tìm lỗi và tối ưu hóa code." },
+  { icon: "📁", label: "Kiểm tra Sandbox", prompt: "Hãy kiểm tra trạng thái môi trường sandbox và các công cụ hiện hành." },
+  { icon: "📊", label: "Báo cáo tiến độ", prompt: "Hãy tổng hợp báo cáo tiến độ công việc hôm nay." },
+];
 
 /**
  * How long the cards tab coalesces bursts of `kanban:event` so it doesn't reread the board
@@ -106,6 +114,8 @@ interface ChatPanelProps {
   onEditNpc?: (npcId: string) => void;
   onFireNpc?: (npcId: string) => void;
   onResetNpcChat?: (npcId: string) => void;
+  onRegenerateNpcResponse?: () => void;
+  onOpenProfileSettings?: (npcId: string) => void;
   npcMoveState?: string;
   onReturnNpc?: (npcId: string) => void;
   /** The report, when this dialog belongs to the employee who came to report. Shows a summary at the top. */
@@ -192,9 +202,9 @@ function sameSpeaker(previous: RoomMessage | undefined, current: RoomMessage): b
     : previous.senderName === current.senderName;
 }
 
-const MIN_WIDTH = 250;
-const MAX_WIDTH = 600;
-const DEFAULT_WIDTH = 320;
+const MIN_WIDTH = 300;
+const MAX_WIDTH = 750;
+const DEFAULT_WIDTH = 360;
 
 /** Is a modal layer floating above the chat panel? */
 function modalLayerOpen(): boolean {
@@ -224,6 +234,8 @@ export default function ChatPanel({
   onEditNpc,
   onFireNpc,
   onResetNpcChat,
+  onRegenerateNpcResponse,
+  onOpenProfileSettings,
   roomState,
   channelChatOpen,
   channelChatInputDisabled,
@@ -377,6 +389,40 @@ export default function ChatPanel({
   const [showGearMenu, setShowGearMenu] = useState(false);
   const [sessions] = useState(() => new ConversationSessionStore());
   const [, setSessionRevision] = useState(0);
+  const [speakingMsgId, setSpeakingMsgId] = useState<string | null>(null);
+  const [copiedMsgId, setCopiedMsgId] = useState<string | null>(null);
+
+  const handleCopyText = useCallback((id: string, text: string) => {
+    if (typeof navigator !== "undefined" && navigator.clipboard?.writeText) {
+      navigator.clipboard.writeText(text);
+      setCopiedMsgId(id);
+      setTimeout(() => setCopiedMsgId(null), 2000);
+    }
+  }, []);
+
+  const handleSpeakText = useCallback(
+    (id: string, text: string) => {
+      if (typeof window === "undefined" || !window.speechSynthesis) return;
+      if (speakingMsgId === id) {
+        window.speechSynthesis.cancel();
+        setSpeakingMsgId(null);
+        return;
+      }
+      window.speechSynthesis.cancel();
+      const cleanText = text
+        .replace(/[*_#`~\[\]()]/g, "")
+        .replace(/https?:\/\/\S+/g, "")
+        .trim();
+      const utterance = new SpeechSynthesisUtterance(cleanText);
+      utterance.lang = "vi-VN";
+      utterance.onend = () => setSpeakingMsgId(null);
+      utterance.onerror = () => setSpeakingMsgId(null);
+      setSpeakingMsgId(id);
+      window.speechSynthesis.speak(utterance);
+    },
+    [speakingMsgId],
+  );
+
   const t = useT();
   // The newest reply still queued, thinking or streaming — what the stop button stops.
   const activeNpcResponse = [...npcResponses].reverse().find(isActiveChatResponse) ?? null;
@@ -812,6 +858,19 @@ export default function ChatPanel({
                     {t("npc.return")}
                   </button>
                 )}
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (window.confirm("Bạn có chắc chắn muốn làm mới toàn bộ cuộc trò chuyện với nhân viên này?")) {
+                      onResetNpcChat?.(dialogNpc!.npcId);
+                    }
+                  }}
+                  className="text-text-muted hover:text-danger text-sm p-1 rounded hover:bg-surface-raised transition-colors"
+                  title="Xóa lịch sử & làm mới cuộc trò chuyện"
+                  aria-label="Làm mới cuộc trò chuyện"
+                >
+                  <RotateCcw className="w-3.5 h-3.5" />
+                </button>
                 <div className="relative">
                   <button
                     onClick={() => setShowGearMenu(!showGearMenu)}
@@ -833,6 +892,16 @@ export default function ChatPanel({
                           >
                             <Pencil className="w-3.5 h-3.5 inline mr-1" />
                             {t("npc.move")}
+                          </button>
+                          <button
+                            onClick={() => {
+                              setShowGearMenu(false);
+                              onOpenProfileSettings?.(dialogNpc!.npcId);
+                            }}
+                            className="w-full text-left px-3 py-2 text-sm text-text hover:bg-surface-raised"
+                          >
+                            <Settings className="w-3.5 h-3.5 inline mr-1" />
+                            {t("npc.profileSettings")}
                           </button>
                           <button
                             onClick={() => {
@@ -1022,37 +1091,93 @@ export default function ChatPanel({
                             : msg.content}
                         </ChatBubble>
                       )}
-                      {onCreateTaskFromChat &&
-                        dialogNpc &&
-                        msg.role === "npc" &&
+                      {msg.role === "npc" &&
                         msg.content.trim() &&
                         !msg.responseTransient &&
                         !(isNpcStreaming && i === npcMessages.length - 1) && (
-                          <button
-                            type="button"
-                            className="text-xs text-primary underline underline-offset-2"
-                            onClick={() => {
-                              const response = npcResponses.find(
-                                (entry) =>
-                                  entry.requestId === msg.responseRequestId &&
-                                  entry.npcId === dialogNpc.npcId,
-                              );
-                              const request = response
-                                ? npcMessages.find(
+                          <div className="flex items-center gap-1.5 mt-1 px-1">
+                            <button
+                              type="button"
+                              onClick={() => handleCopyText(msg.id || `msg-${i}`, msg.content)}
+                              className="inline-flex items-center gap-1 text-[11px] text-text-dim hover:text-text px-1.5 py-0.5 rounded hover:bg-surface-raised transition-colors"
+                              title="Sao chép nội dung tin nhắn"
+                            >
+                              {copiedMsgId === (msg.id || `msg-${i}`) ? (
+                                <>
+                                  <Check className="w-3 h-3 text-emerald-500" />
+                                  <span className="text-emerald-500 font-medium">Đã chép</span>
+                                </>
+                              ) : (
+                                <>
+                                  <Copy className="w-3 h-3" />
+                                  <span>Sao chép</span>
+                                </>
+                              )}
+                            </button>
+
+                            <button
+                              type="button"
+                              onClick={() => handleSpeakText(msg.id || `msg-${i}`, msg.content)}
+                              className={`inline-flex items-center gap-1 text-[11px] px-1.5 py-0.5 rounded hover:bg-surface-raised transition-colors ${
+                                speakingMsgId === (msg.id || `msg-${i}`)
+                                  ? "text-primary font-medium"
+                                  : "text-text-dim hover:text-text"
+                              }`}
+                              title={speakingMsgId === (msg.id || `msg-${i}`) ? "Dừng đọc" : "Đọc to (Voice)"}
+                            >
+                              {speakingMsgId === (msg.id || `msg-${i}`) ? (
+                                <>
+                                  <VolumeX className="w-3 h-3 text-primary animate-pulse" />
+                                  <span>Dừng</span>
+                                </>
+                              ) : (
+                                <>
+                                  <Volume2 className="w-3 h-3" />
+                                  <span>Đọc</span>
+                                </>
+                              )}
+                            </button>
+
+                            {onRegenerateNpcResponse && i === npcMessages.length - 1 && (
+                              <button
+                                type="button"
+                                onClick={onRegenerateNpcResponse}
+                                className="inline-flex items-center gap-1 text-[11px] text-text-dim hover:text-text px-1.5 py-0.5 rounded hover:bg-surface-raised transition-colors"
+                                title="Tạo lại câu trả lời"
+                              >
+                                <RotateCcw className="w-3 h-3" />
+                                <span>Tạo lại</span>
+                              </button>
+                            )}
+
+                            {onCreateTaskFromChat && dialogNpc && (
+                              <button
+                                type="button"
+                                className="text-[11px] text-primary underline underline-offset-2 ml-auto"
+                                onClick={() => {
+                                  const response = npcResponses.find(
                                     (entry) =>
-                                      entry.role === "player" &&
-                                      entry.id === response.sourceMessageId,
-                                  )?.content
-                                : undefined;
-                              onCreateTaskFromChat({
-                                title: (request || msg.content).split("\n")[0].slice(0, 140),
-                                body: `${t("chat.taskSourceRequest")}\n${request ?? t("chat.taskSourceUnknown")}\n\n${t("chat.taskSourceReply", { name: dialogNpc.npcName })}\n${msg.content}`,
-                                assigneeNpcId: dialogNpc.npcId,
-                              });
-                            }}
-                          >
-                            {t("chat.createTask")}
-                          </button>
+                                      entry.requestId === msg.responseRequestId &&
+                                      entry.npcId === dialogNpc.npcId,
+                                  );
+                                  const request = response
+                                    ? npcMessages.find(
+                                        (entry) =>
+                                          entry.role === "player" &&
+                                          entry.id === response.sourceMessageId,
+                                      )?.content
+                                    : undefined;
+                                  onCreateTaskFromChat({
+                                    title: (request || msg.content).split("\n")[0].slice(0, 140),
+                                    body: `${t("chat.taskSourceRequest")}\n${request ?? t("chat.taskSourceUnknown")}\n\n${t("chat.taskSourceReply", { name: dialogNpc.npcName })}\n${msg.content}`,
+                                    assigneeNpcId: dialogNpc.npcId,
+                                  });
+                                }}
+                              >
+                                {t("chat.createTask")}
+                              </button>
+                            )}
+                          </div>
                         )}
                       {msg.role === "player" && (
                         <ResponseProgress
@@ -1111,6 +1236,22 @@ export default function ChatPanel({
                   >
                     <span className="inline-block w-1.5 h-1.5 rounded-full bg-npc animate-pulse" />
                     {t(npcActivityKey)}
+                  </div>
+                )}
+                {inNpcDialog && !isNpcStreaming && (
+                  <div className="px-3 py-1.5 flex items-center gap-1.5 overflow-x-auto no-scrollbar border-t border-border/50 bg-surface/40">
+                    <span className="text-[10px] text-text-dim shrink-0 font-medium">Gợi ý:</span>
+                    {PROMPT_STARTERS.map((s, idx) => (
+                      <button
+                        key={idx}
+                        type="button"
+                        onClick={() => onSend(s.prompt)}
+                        className="flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-medium bg-surface hover:bg-surface-raised text-text-secondary hover:text-text border border-border shrink-0 transition-colors shadow-2xs"
+                      >
+                        <span>{s.icon}</span>
+                        <span>{s.label}</span>
+                      </button>
+                    ))}
                   </div>
                 )}
                 <ChatInput

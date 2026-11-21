@@ -14,6 +14,8 @@ import {
   ChevronUp,
 } from "lucide-react";
 import { normalizeMeetingMinutesRecord } from "@/lib/meeting-minutes";
+import { detectSlideLinks } from "@/lib/slide-links";
+import SlideActionButton from "./ui/SlideActionButton";
 import MeetingOutcomeSection from "./meeting-room/MeetingOutcomeSection";
 
 interface MeetingMinutesItem {
@@ -277,6 +279,9 @@ export default function MinutesModal({
                       {t("meeting.conclusions")}
                     </div>
                     <div className="text-text-secondary leading-relaxed">{detail.conclusions}</div>
+                    {detectSlideLinks(detail.conclusions).map((link, idx) => (
+                      <SlideActionButton key={idx} href={link} label="Xem Slide Động Tổng Hợp Cuộc Họp" />
+                    ))}
                   </div>
                 )}
 

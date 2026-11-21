@@ -58,32 +58,41 @@ export default function ConversationChatInput({
             }
             downloadUrl={(id) => attachments.endpoint(`/${encodeURIComponent(id)}/content`)}
           />
-          <div className="px-3 flex items-center gap-3 text-xs text-text-muted">
-            <button
-              type="button"
-              disabled={
-                !attachments.available || props.disabled || attachments.selectedIds.length >= 3
-              }
-              onClick={() => input.current?.click()}
-            >
-              {t("chat.attachFile")}
-            </button>
-            <button type="button" onClick={() => void attachments.refresh()}>
-              {t("attachments.refresh")}
-            </button>
-            <span>{t("attachments.limit")}</span>
-            <input
-              ref={input}
-              type="file"
-              multiple
-              className="hidden"
-              accept=".txt,.md,.json,.csv,.pdf,.xlsx,.xls,.docx,.doc,.png,.jpg,.jpeg,.gif,.webp"
-              onChange={(event) => {
-                void attachments.upload(Array.from(event.target.files ?? []));
-                event.target.value = "";
-              }}
-            />
-          </div>
+          {attachments.files.length > 0 && (
+            <div className="px-3 py-1 flex items-center justify-between text-xs text-text-muted border-b border-border/50">
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  disabled={
+                    !attachments.available || props.disabled || attachments.selectedIds.length >= 3
+                  }
+                  onClick={() => input.current?.click()}
+                  className="font-medium hover:text-text text-primary transition-colors"
+                >
+                  + {t("chat.attachFile")}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => void attachments.refresh()}
+                  className="hover:text-text transition-colors"
+                >
+                  {t("attachments.refresh")}
+                </button>
+              </div>
+              <span className="text-[11px] text-text-dim">{t("attachments.limit")}</span>
+            </div>
+          )}
+          <input
+            ref={input}
+            type="file"
+            multiple
+            className="hidden"
+            accept=".txt,.md,.json,.csv,.pdf,.xlsx,.xls,.docx,.doc,.png,.jpg,.jpeg,.gif,.webp"
+            onChange={(event) => {
+              void attachments.upload(Array.from(event.target.files ?? []));
+              event.target.value = "";
+            }}
+          />
         </>
       )}
       {attachments.error && (
@@ -121,19 +130,20 @@ export default function ConversationChatInput({
       )}
       <ChatInput
         {...props}
-        showFileUpload={false}
+        showFileUpload={true}
+        onCustomFileUpload={conversation ? () => input.current?.click() : undefined}
         attachmentCount={attachments.selectedIds.length}
         disabled={props.disabled || attachments.busy}
-        onSend={(message, _files, skills) => {
+        onSend={(message, files, skills) => {
           const requestId = crypto.randomUUID();
           if (attachments.selectedIds.length) execution.start(requestId);
           if (conversation && attachments.selectedIds.length) {
-            onSend(message, undefined, skills, {
+            onSend(message, files, skills, {
               attachmentIds: attachments.selectedIds,
               attachmentRequestId: requestId,
               attachmentConversation: conversation,
             });
-          } else onSend(message, undefined, skills);
+          } else onSend(message, files, skills);
           attachments.clearSelection();
         }}
       />

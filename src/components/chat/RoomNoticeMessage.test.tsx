@@ -46,7 +46,7 @@ async function render(
   };
 }
 
-const LOCALES: Locale[] = ["ko", "en", "ja", "zh"];
+const LOCALES: Locale[] = ["ko", "en", "ja", "zh", "vi"];
 
 // The sentence must actually differ per locale — this catches it if it's stuck in one language.
 const CARD_DONE_HINT: Record<Locale, string> = {
@@ -54,12 +54,14 @@ const CARD_DONE_HINT: Record<Locale, string> = {
   en: "Finished",
   ja: "完了",
   zh: "已完成",
+  vi: "hoàn thành",
 };
 const CARD_BLOCKED_HINT: Record<Locale, string> = {
   ko: "막혔습니다",
   en: "blocked",
   ja: "ブロック",
   zh: "阻塞",
+  vi: "tắc nghẽn",
 };
 
 test("card_done — all four locales include the card title + an open-card link (R29)", async () => {
@@ -129,6 +131,7 @@ const CARD_REVIEW_HINT: Record<string, string> = {
   en: "review",
   ja: "確認",
   zh: "确认",
+  vi: "đánh giá",
 };
 
 test("card_review — all four locales show a review-request sentence + an open-card link", async () => {

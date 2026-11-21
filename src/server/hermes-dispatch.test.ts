@@ -69,7 +69,11 @@ const sqlitePath = path.join(os.tmpdir(), `hermes-dispatch-test-${crypto.randomU
 process.env.DESKRPG_HOME = os.tmpdir();
 process.env.SQLITE_PATH = sqlitePath;
 for (const ext of ["", "-wal", "-shm"]) {
-  process.on("exit", () => fs.rmSync(`${sqlitePath}${ext}`, { force: true }));
+  process.on("exit", () => {
+    try {
+      fs.rmSync(`${sqlitePath}${ext}`, { force: true });
+    } catch {}
+  });
 }
 
 async function loadDb() {

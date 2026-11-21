@@ -122,6 +122,8 @@ export default function OfficeLookGallery({
           <button
             type="button"
             className="lookbook-card"
+            data-rh-ignore="true"
+            data-card="true"
             key={l.id}
             aria-pressed={selectedId === l.id}
             onClick={() => onSelect(l)}

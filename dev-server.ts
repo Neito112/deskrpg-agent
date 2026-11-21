@@ -48,6 +48,26 @@ app.prepare().then(async () => {
   if (port !== preferredPort) {
     console.log(`⚠ Port ${preferredPort} in use, using ${port} instead`);
   }
+
+  // Ensure Hermes Gateway daemon is running hidden in the background for local usage
+  try {
+    const { ensureHermesGatewayRunning, syncLocalHermesWorkerPropagationAndLinks } = await import("./src/lib/hermes/local-manager");
+    syncLocalHermesWorkerPropagationAndLinks();
+    void ensureHermesGatewayRunning().catch(() => {});
+  } catch (err) {
+    console.warn("[dev-server] Hermes auto-start:", err);
+  }
+
+  // Auto-bootstrap: default config, skill sync, Gemini bridge
+  try {
+    const { runBootstrap } = await import("./src/server/auto-bootstrap");
+    void runBootstrap(process.cwd()).catch((err) =>
+      console.warn("[dev-server] Bootstrap:", err)
+    );
+  } catch (err) {
+    console.warn("[dev-server] Auto-bootstrap:", err);
+  }
+
   const { setupSocketHandlers } = await import("./src/server/socket-handlers");
 
   // This used to register an in-process RPC handler so API routes could call the OpenClaw gateway's

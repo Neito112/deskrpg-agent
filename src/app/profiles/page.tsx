@@ -9,12 +9,13 @@ import { useT } from "@/lib/i18n";
 import { getLocalizedErrorMessage } from "@/lib/i18n/error-codes";
 import { backLinkTarget } from "@/app/gateways/return-target";
 import { employeeDetailHref, hirePageHref } from "./hire-navigation";
-import { showGatewayPicker } from "./gateway-picker-visibility";
 
 type Gateway = {
   id: string;
   displayName: string;
   isOwner?: boolean;
+  lastValidationStatus?: string | null;
+  pluginStatus?: string | null;
 };
 
 /** NPC identity and appearance belong to a gateway profile, not a standalone character. */
@@ -72,9 +73,13 @@ function ProfilesPageContent() {
           if (requestedGateway && available.some((gateway) => gateway.id === requestedGateway)) {
             return requestedGateway;
           }
-          return available.some((gateway) => gateway.id === current)
-            ? current
-            : (available[0]?.id ?? "");
+          if (current && available.some((gateway) => gateway.id === current)) {
+            return current;
+          }
+          const active = available.find(
+            (g) => g.lastValidationStatus === "valid" || g.pluginStatus === "ready",
+          );
+          return active?.id ?? (available[0]?.id ?? "");
         });
       } catch (cause) {
         if (!controller.signal.aborted) {
@@ -162,60 +167,50 @@ function ProfilesPageContent() {
               <ArrowRight size={16} aria-hidden="true" />
             </Link>
           </div>
-        ) : (
-          <div
-            className={`grid gap-5 ${showGatewayPicker(gateways.length) ? "lg:grid-cols-[260px_minmax(0,1fr)]" : ""}`}
+        ) : selected ? (
+          <section
+            className="w-full min-w-0 rounded-2xl border border-border bg-surface p-5 md:p-6"
+            aria-labelledby="profile-gateway-heading"
           >
-            {showGatewayPicker(gateways.length) && (
-              <aside className="rounded-2xl border border-border bg-surface p-4 self-start">
-                <h2 className="px-2 pb-3 text-xs font-semibold text-text-muted">
-                  {t("profiles.gateways.connected")}
+            <div className="mb-5 flex flex-wrap items-center justify-between gap-4 border-b border-border-subtle pb-4">
+              <div>
+                <h2 id="profile-gateway-heading" className="text-lg font-semibold break-words">
+                  {selected.displayName}
                 </h2>
-                <div className="space-y-2" role="group" aria-label={t("profiles.gateways.choose")}>
+                <p className="mt-1 text-sm text-text-muted">
+                  {selected.isOwner === true
+                    ? t("profiles.gateway.ownerHint")
+                    : t("profiles.gateway.sharedHint")}
+                </p>
+              </div>
+              {gateways.length > 1 && (
+                <div className="flex flex-wrap items-center gap-2">
                   {gateways.map((gateway) => (
                     <button
                       type="button"
                       key={gateway.id}
                       onClick={() => setSelectedId(gateway.id)}
                       aria-pressed={gateway.id === selectedId}
-                      className={`w-full rounded-xl border p-3 text-left transition-colors ${gateway.id === selectedId ? "border-primary/30 bg-primary-muted" : "border-transparent hover:bg-bg"}`}
+                      className={`rounded-lg px-3 py-1.5 text-xs font-semibold transition ${
+                        gateway.id === selectedId
+                          ? "bg-primary text-white"
+                          : "border border-border bg-bg text-text-muted hover:text-text"
+                      }`}
                     >
-                      <span className="block truncate text-sm font-semibold">
-                        {gateway.displayName}
-                      </span>
-                      <span className="mt-1 block text-xs text-text-muted">
-                        {gateway.isOwner === true ? t("gateways.owner") : t("gateways.shared")}
-                      </span>
+                      {gateway.displayName}
                     </button>
                   ))}
                 </div>
-              </aside>
-            )}
-            {selected && (
-              <section
-                className="min-w-0 rounded-2xl border border-border bg-surface p-5 md:p-6"
-                aria-labelledby="profile-gateway-heading"
-              >
-                <div className="mb-5 border-b border-border-subtle pb-4">
-                  <h2 id="profile-gateway-heading" className="text-lg font-semibold break-words">
-                    {selected.displayName}
-                  </h2>
-                  <p className="mt-1 text-sm text-text-muted">
-                    {selected.isOwner === true
-                      ? t("profiles.gateway.ownerHint")
-                      : t("profiles.gateway.sharedHint")}
-                  </p>
-                </div>
-                <HermesProfileList
-                  key={selected.id}
-                  gatewayId={selected.id}
-                  canRegister={selected.isOwner === true}
-                  returnTo={returnTo}
-                />
-              </section>
-            )}
-          </div>
-        )}
+              )}
+            </div>
+            <HermesProfileList
+              key={selected.id}
+              gatewayId={selected.id}
+              canRegister={selected.isOwner !== false}
+              returnTo={returnTo}
+            />
+          </section>
+        ) : null}
       </div>
     </div>
   );

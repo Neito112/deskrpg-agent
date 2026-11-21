@@ -53,6 +53,9 @@ import {
   AlarmClock,
   Package,
   ArrowUpCircle,
+  UserPlus,
+  Sparkles,
+  Bot,
 } from "lucide-react";
 import type { Socket } from "socket.io-client";
 import { EventBus, setPendingChannelData, type PendingChannelData } from "@/game/EventBus";
@@ -137,6 +140,7 @@ import ArtifactsModal from "@/components/artifacts/ArtifactsModal";
 import ConnectorManagerModal from "@/components/connectors/ConnectorManagerModal";
 import ApprovalPolicyModal from "@/components/approvals/ApprovalPolicyModal";
 import SkillManagerModal from "@/components/skills/SkillManagerModal";
+import ProfileManagementModal from "@/components/hermes/ProfileManagementModal";
 import type { SourceTarget } from "@/components/artifacts/artifact-view-model";
 import { createArtifactsApi } from "@/components/artifacts/artifacts-api";
 import type { TaskDrawerArtifacts } from "@/components/kanban/TaskDrawer";
@@ -371,7 +375,13 @@ function GamePageInner({ onFatal }: GamePageClientProps) {
     rosterNpcsRef.current = rosterNpcs;
   }, [rosterNpcs]);
   const [channelPlayers, setChannelPlayers] = useState<ChannelPlayerSummary[]>([]);
+  const [profileModalConfig, setProfileModalConfig] = useState<{
+    isOpen: boolean;
+    profileName?: string | null;
+    view?: "list" | "detail" | "hire";
+  }>({ isOpen: false });
   const [conversationPanelWidth, setConversationPanelWidth] = useState(388);
+  const [workspaceNavigatorWidth, setWorkspaceNavigatorWidth] = useState(260);
 
   // Ref to track current dialogNpc for use inside socket listeners (must be declared before sync effect)
   const dialogNpcRef = useRef<{ npcId: string; npcName: string } | null>(null);
@@ -516,7 +526,7 @@ function GamePageInner({ onFatal }: GamePageClientProps) {
   const [showViewSettings, setShowViewSettings] = useState(false);
   const returnToKanbanRef = useRef(false);
   const [channelSettingsInitialTab, setChannelSettingsInitialTab] = useState<
-    "settings" | "members" | "gateway"
+    "settings" | "members" | "gateway" | "ai-model"
   >("settings");
   const [showAboutModal, setShowAboutModal] = useState(false);
   const [meetingMinutesCount, setMeetingMinutesCount] = useState(0);
@@ -575,12 +585,31 @@ function GamePageInner({ onFatal }: GamePageClientProps) {
   }, [onFatal]);
 
   const openChannelSettings = useCallback(
-    (initialTab: "settings" | "members" | "gateway" = "settings") => {
+    (initialTab: "settings" | "members" | "gateway" | "ai-model" = "settings") => {
       setChannelSettingsInitialTab(initialTab);
       setShowChannelSettings(true);
     },
     [],
   );
+
+  const handleOpenHermes = useCallback(async () => {
+    try {
+      const res = await fetch("/api/hermes/dashboard", { method: "POST" });
+      const data = await res.json();
+      if (data.type === "desktop" && data.ok) {
+        return;
+      }
+      if (data.ok && data.url) {
+        if (typeof window !== "undefined" && (window as unknown as { desktopApp?: { openExternal?: (u: string) => void } }).desktopApp?.openExternal) {
+          (window as unknown as { desktopApp: { openExternal: (u: string) => void } }).desktopApp.openExternal(data.url);
+        } else {
+          window.open(data.url, "_blank");
+        }
+      }
+    } catch (e) {
+      console.error("Failed to open Hermes:", e);
+    }
+  }, []);
 
   const copyDebugInformation = useCallback(async () => {
     const debugInfo = [
@@ -1516,20 +1545,36 @@ function GamePageInner({ onFatal }: GamePageClientProps) {
 
   const gatewayId = channel?.gatewayConfig?.gatewayId ?? null;
 
-  const openProfileSettings = useCallback(() => {
+  const openProfileSettings = useCallback((targetIdOrProfile?: string) => {
     if (!gatewayId) return;
-    const returnTo = `${window.location.pathname}${window.location.search}`;
     setContextMenu(null);
     closeRosterMenus();
-    router.push(employeesHref(gatewayId, { returnTo }));
-  }, [closeRosterMenus, gatewayId, router]);
+    let profileName: string | null = null;
+    if (targetIdOrProfile) {
+      const match = rosterNpcsRef.current.find(
+        (n) => n.id === targetIdOrProfile || n.profile?.profileName === targetIdOrProfile
+      );
+      if (match?.profile?.profileName) {
+        profileName = match.profile.profileName;
+      } else if (!targetIdOrProfile.includes("-") || targetIdOrProfile.length < 30) {
+        profileName = targetIdOrProfile;
+      }
+    }
+    setProfileModalConfig({
+      isOpen: true,
+      profileName: profileName || null,
+      view: profileName ? "detail" : "list",
+    });
+  }, [closeRosterMenus, gatewayId]);
 
   const handleHireNpc = useCallback(() => {
     if (!gatewayId) return;
-    const returnTo = `${window.location.pathname}${window.location.search}`;
     closeRosterMenus();
-    router.push(employeesHref(gatewayId, { create: true, returnTo }));
-  }, [closeRosterMenus, gatewayId, router]);
+    setProfileModalConfig({
+      isOpen: true,
+      view: "hire",
+    });
+  }, [closeRosterMenus, gatewayId]);
 
   // The stop button — the server checks the reply is this user's and stops the Hermes run.
   const handleStopNpcResponse = useCallback(
@@ -1669,9 +1714,24 @@ function GamePageInner({ onFatal }: GamePageClientProps) {
         },
         ...previous.filter((thread) => thread.npcId !== dialogNpc.npcId),
       ]);
+      let serializedFiles:
+        | Array<{ name: string; type: string; size: number; data: ArrayBuffer }>
+        | undefined = undefined;
+      if (files && files.length > 0) {
+        serializedFiles = await Promise.all(
+          files.map(async (file) => ({
+            name: file.name,
+            type: file.type || "application/octet-stream",
+            size: file.size,
+            data: await file.arrayBuffer(),
+          })),
+        );
+      }
+
       socket.emit("npc:chat", {
         npcId: dialogNpc.npcId,
         message,
+        files: serializedFiles,
         sourceMessageId,
         // Right after reconnecting the server's `players` does not have this socket yet and does not know the character.
         // Send the character along so conversation in that window is not lost (the server verifies ownership).
@@ -1682,6 +1742,16 @@ function GamePageInner({ onFatal }: GamePageClientProps) {
     },
     [socket, channelId, dialogNpc, characterId, showToastNotification, t],
   );
+
+  const handleRegenerateNpcResponse = useCallback(() => {
+    if (!dialogNpc) return;
+    const lastPlayerMsg = [...npcMessages].reverse().find((m) => m.role === "player");
+    if (!lastPlayerMsg || !lastPlayerMsg.content) return;
+    const cleanContent = lastPlayerMsg.content.split("\n📎 ")[0].trim();
+    if (cleanContent) {
+      handleDialogSend(cleanContent);
+    }
+  }, [dialogNpc, npcMessages, handleDialogSend]);
 
   const handleRoomSend = useCallback(
     (message: string, skills?: string[], attachments?: AttachmentSendPayload) => {
@@ -2947,7 +3017,7 @@ function GamePageInner({ onFatal }: GamePageClientProps) {
     if (action === "call") handleCallNpcById(npcId);
     else if (action === "return") handleReturnNpc(npcId);
     else if (action === "place") handleMoveNpcById(npcId);
-    else if (action === "profile") openProfileSettings();
+    else if (action === "profile") openProfileSettings(npcId);
     else if (action === "reset-chat") handleResetNpcChatById(npcId);
     else if (action === "sleep") handleSleepNpcById(npcId);
     else if (action === "wake") setNpcActiveById(npcId, true);
@@ -2981,6 +3051,7 @@ function GamePageInner({ onFatal }: GamePageClientProps) {
         npcChatInputDisabled={!socketConnected}
         npcChatDisabledPlaceholder={t("chat.disconnected")}
         onSend={handleDialogSend}
+        onRegenerateNpcResponse={handleRegenerateNpcResponse}
         onStopNpcResponse={handleStopNpcResponse}
         onStopRoomResponse={handleStopRoomResponse}
         onClose={handleDialogClose}
@@ -2990,6 +3061,7 @@ function GamePageInner({ onFatal }: GamePageClientProps) {
         onEditNpc={handleMoveNpcById}
         onFireNpc={handleSleepNpcById}
         onResetNpcChat={handleResetNpcChatById}
+        onOpenProfileSettings={openProfileSettings}
         roomState={roomState}
         channelChatOpen={channelChatOpen}
         channelChatInputDisabled={channelChatInputDisabled || !socketConnected}
@@ -3063,11 +3135,14 @@ function GamePageInner({ onFatal }: GamePageClientProps) {
 
   const page = (
     <div
+      data-game-root="true"
       data-game-meeting={mode === "meeting"}
       className="theme-game ui2-game h-screen w-screen overflow-hidden bg-bg text-text"
     >
       <SocketConnectionNotice socket={socket} />
       <ConversationWorkspace
+        navigatorWidth={workspaceNavigatorWidth}
+        onNavigatorWidthChange={setWorkspaceNavigatorWidth}
         conversationWidth={conversationPanelWidth}
         navigator={
           <WorkspaceNavigator
@@ -3126,6 +3201,7 @@ function GamePageInner({ onFatal }: GamePageClientProps) {
       {/* Spawn set mode banner */}
       {spawnSetMode && (
         <div
+          data-spawn-set-mode="true"
           style={{ top: "var(--game-header-height, 48px)" }}
           className="fixed left-1/2 -translate-x-1/2 z-20 flex items-center gap-3 px-4 py-2 bg-primary/95 border border-primary-light rounded-lg text-white text-sm shadow-lg"
         >
@@ -3414,6 +3490,30 @@ function GamePageInner({ onFatal }: GamePageClientProps) {
             <span className="header-full-label">{t("artifacts.open")}</span>
           </button>
 
+          {/* Hire / Create Employee (Bot) directly */}
+          <button
+            onClick={handleHireNpc}
+            disabled={!gatewayId}
+            title={!gatewayId ? t("game.roster.needsGateway") : t("hermes.wizard.openButton")}
+            aria-label={t("hermes.wizard.openButton")}
+            className="flex items-center gap-1 px-2.5 py-1 bg-primary hover:bg-primary-hover text-white rounded-md text-caption font-semibold disabled:opacity-50 disabled:cursor-not-allowed shadow-sm transition-colors"
+          >
+            <UserPlus className="w-3 h-3" />
+            <span className="header-full-label">{t("hermes.wizard.openButton")}</span>
+          </button>
+
+          {/* Open Hermes Desktop App */}
+          <button
+            onClick={handleOpenHermes}
+            title="Mở giao diện Hermes (Desktop App)"
+            aria-label="Mở Hermes"
+            className="flex items-center gap-1 px-2.5 py-1 bg-surface-raised hover:bg-surface-raised/80 text-text rounded-md text-caption font-semibold border border-border shadow-sm transition-colors"
+          >
+            <Bot className="w-3 h-3 text-primary" />
+            <span className="header-full-label">Mở Hermes</span>
+          </button>
+
+
           <GrowthStarButton
             stars={appMeta.stars}
             clicked={appMeta.starClicked}
@@ -3456,6 +3556,26 @@ function GamePageInner({ onFatal }: GamePageClientProps) {
                     {t("game.settings")}
                   </button>
                 )}
+                <button
+                  onClick={() => {
+                    openChannelSettings("ai-model");
+                    setShowUserMenu(false);
+                  }}
+                  className="w-full text-left px-4 py-2 text-body text-text-secondary hover:bg-surface-raised hover:text-text flex items-center gap-2"
+                >
+                  <Sparkles className="w-3.5 h-3.5 text-primary" />
+                  Cấu hình AI & Model
+                </button>
+                <button
+                  onClick={() => {
+                    void handleOpenHermes();
+                    setShowUserMenu(false);
+                  }}
+                  className="w-full text-left px-4 py-2 text-body text-text-secondary hover:bg-surface-raised hover:text-text flex items-center gap-2"
+                >
+                  <Bot className="w-3.5 h-3.5 text-primary" />
+                  Mở ứng dụng Hermes
+                </button>
                 {/* View settings are for everyone — a personal setting that applies only to this browser. */}
                 <button
                   data-menu-item="view-settings"
@@ -4106,7 +4226,7 @@ function GamePageInner({ onFatal }: GamePageClientProps) {
                         {t("npc.move")}
                       </button>
                       <button
-                        onClick={openProfileSettings}
+                        onClick={() => openProfileSettings(contextMenu.npcId)}
                         disabled={!gatewayId}
                         title={!gatewayId ? t("game.roster.needsGateway") : undefined}
                         className="w-full text-left px-3 py-2 text-body text-text hover:bg-surface-raised disabled:text-text-dim disabled:cursor-not-allowed"
@@ -4176,6 +4296,18 @@ function GamePageInner({ onFatal }: GamePageClientProps) {
           socket={socket}
           npcs={channelNpcs}
           onLeave={meetingEntry.cancel}
+        />
+      )}
+      {gatewayId && (
+        <ProfileManagementModal
+          isOpen={profileModalConfig.isOpen}
+          onClose={() => setProfileModalConfig((prev) => ({ ...prev, isOpen: false }))}
+          gatewayId={gatewayId}
+          initialProfileName={profileModalConfig.profileName}
+          initialView={profileModalConfig.view}
+          onProfileUpdated={() => {
+            void refreshNpcLists();
+          }}
         />
       )}
       <NpcStatesBridge

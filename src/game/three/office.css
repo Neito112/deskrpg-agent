@@ -18,7 +18,7 @@
 
 .conversation-workspace {
   grid-template-columns:
-    var(--workspace-nav-width, 264px)
+    var(--workspace-nav-width, 260px)
     minmax(0, 1fr)
     var(--conversation-pane-width, 388px);
 }
@@ -381,3 +381,236 @@
   flex-shrink: 0;
   box-shadow: none;
 }
+
+/* ==========================================================================
+   RUBBER HOSE 1930s CARTOON THEME OVERRIDES FOR 3D OFFICE & WORKSPACE
+   ========================================================================== */
+
+/* 1. Canvas 3D Three.js filter & environment */
+[data-rubber-hose="true"] .office-presentation {
+  background: var(--rh-paper, #ecd7ac) !important;
+}
+
+[data-rubber-hose="true"] .office-three-canvas canvas,
+[data-rubber-hose="true"] .office-presentation canvas,
+[data-rubber-hose="true"] [data-game-root] canvas {
+  filter: contrast(1.2) saturate(0.7) sepia(0.18) drop-shadow(0 4px 6px rgba(37, 29, 22, 0.25)) !important;
+  transition: filter 0.3s ease;
+}
+
+/* 2. Character Actor Labels & Badges */
+[data-rubber-hose="true"] .office-actor-label {
+  background-color: var(--rh-cream, #fff9ea) !important;
+  border: 2.5px solid var(--rh-ink, #251d16) !important;
+  border-radius: 999px !important;
+  box-shadow: 2px 2px 0 var(--rh-ink, #251d16) !important;
+  font-family: var(--rh-font, "Itim", "Mali", sans-serif) !important;
+  color: var(--rh-ink, #251d16) !important;
+  font-weight: 700 !important;
+  padding: 0 4px !important;
+  transition: transform 0.12s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.12s ease !important;
+}
+
+[data-rubber-hose="true"] .office-actor-label:hover {
+  transform: translateY(-2px) scale(1.04) !important;
+  box-shadow: 2px 4px 0 var(--rh-ink, #251d16) !important;
+}
+
+[data-rubber-hose="true"] .office-actor-label:active {
+  transform: translateY(1px) scale(0.96) !important;
+  box-shadow: 1px 1px 0 var(--rh-ink, #251d16) !important;
+}
+
+[data-rubber-hose="true"] .office-actor-name {
+  background: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+  color: inherit !important;
+  font-family: inherit !important;
+  font-weight: 700 !important;
+  font-size: 13px !important;
+  padding: 3px 8px !important;
+}
+
+[data-rubber-hose="true"] .office-actor-label[data-kind="player"],
+[data-rubber-hose="true"] .office-actor-label[data-kind="player"] .office-actor-name {
+  background-color: #f7ded3 !important;
+  color: #a63d33 !important;
+  border-color: var(--rh-ink, #251d16) !important;
+}
+
+[data-rubber-hose="true"] .office-seat-badge {
+  background-color: var(--rh-ink, #251d16) !important;
+  color: var(--rh-cream, #fff9ea) !important;
+  border: 1.5px solid var(--rh-ink, #251d16) !important;
+  font-family: var(--rh-font, "Itim", "Mali", sans-serif) !important;
+  font-weight: 700 !important;
+  box-shadow: 1px 1px 0 var(--rh-ink, #251d16) !important;
+}
+
+/* 3. Character Speech Bubbles */
+[data-rubber-hose="true"] .office-actor-bubble,
+[data-rubber-hose="true"] .office-speech-bubble {
+  background-color: var(--rh-cream, #fff9ea) !important;
+  border: 2.5px solid var(--rh-ink, #251d16) !important;
+  border-radius: 16px 16px 16px 4px !important;
+  box-shadow: 3px 3px 0 var(--rh-ink, #251d16) !important;
+  font-family: var(--rh-font, "Itim", "Mali", sans-serif) !important;
+  color: var(--rh-ink, #251d16) !important;
+  font-size: 13px !important;
+  font-weight: 600 !important;
+  line-height: 1.4 !important;
+  position: relative !important;
+}
+
+/* Comic speech bubble tail (mũi nhọn truyện tranh) */
+[data-rubber-hose="true"] .office-actor-bubble:not(.office-speech-rail *)::after,
+[data-rubber-hose="true"] .office-speech-bubble:not(.office-speech-rail *)::after {
+  content: "";
+  position: absolute;
+  bottom: -9px;
+  left: 14px;
+  width: 0;
+  height: 0;
+  border-style: solid;
+  border-width: 9px 9px 0 0;
+  border-color: var(--rh-cream, #fff9ea) transparent transparent transparent;
+  z-index: 2;
+}
+
+[data-rubber-hose="true"] .office-actor-bubble:not(.office-speech-rail *)::before,
+[data-rubber-hose="true"] .office-speech-bubble:not(.office-speech-rail *)::before {
+  content: "";
+  position: absolute;
+  bottom: -12.5px;
+  left: 12px;
+  width: 0;
+  height: 0;
+  border-style: solid;
+  border-width: 12px 12px 0 0;
+  border-color: var(--rh-ink, #251d16) transparent transparent transparent;
+  z-index: 1;
+}
+
+[data-rubber-hose="true"] .office-speech-rail {
+  background: var(--rh-paper, #ecd7ac) !important;
+  border: 2.5px solid var(--rh-ink, #251d16) !important;
+  border-radius: 16px !important;
+  box-shadow: 3px 3px 0 var(--rh-ink, #251d16) !important;
+}
+
+/* 4. Camera Controls & Office Toolbars */
+[data-rubber-hose="true"] .office-camera-tools {
+  background: var(--rh-cream, #fbe7c0) !important;
+  background-image: url("/rubber-hose/paper.jpg") !important;
+  border: 2.5px solid var(--rh-ink, #251d16) !important;
+  border-radius: 16px !important;
+  box-shadow: 3px 4px 0 var(--rh-ink, #251d16) !important;
+  gap: 5px !important;
+  padding: 6px 8px !important;
+}
+
+[data-rubber-hose="true"] .office-camera-tools button,
+[data-rubber-hose="true"] .office-camera-tools a {
+  background: var(--rh-cream-light, #fff5db) !important;
+  border: 2px solid var(--rh-ink, #251d16) !important;
+  border-radius: 10px !important;
+  box-shadow: 2px 2px 0 var(--rh-ink, #251d16) !important;
+  color: var(--rh-ink, #251d16) !important;
+  font-family: var(--rh-font, "Itim", "Mali", sans-serif) !important;
+  font-weight: 700 !important;
+  transition: transform 0.12s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.12s ease !important;
+}
+
+[data-rubber-hose="true"] .office-camera-tools button:hover:not(:disabled),
+[data-rubber-hose="true"] .office-camera-tools a:hover {
+  background: #fff !important;
+  transform: translateY(-2px) !important;
+  box-shadow: 2px 4px 0 var(--rh-ink, #251d16) !important;
+}
+
+[data-rubber-hose="true"] .office-camera-tools button:active:not(:disabled),
+[data-rubber-hose="true"] .office-camera-tools a:active {
+  transform: translateY(1px) scale(0.96) !important;
+  box-shadow: 1px 1px 0 var(--rh-ink, #251d16) !important;
+}
+
+[data-rubber-hose="true"] .office-camera-tools button:disabled {
+  opacity: 0.35 !important;
+  box-shadow: none !important;
+  transform: none !important;
+}
+
+[data-rubber-hose="true"] .office-movement-hint {
+  background: var(--rh-cream, #fbe7c0) !important;
+  border: 2px solid var(--rh-ink, #251d16) !important;
+  border-radius: 999px !important;
+  box-shadow: 2px 2px 0 var(--rh-ink, #251d16) !important;
+  color: var(--rh-ink, #251d16) !important;
+  font-family: var(--rh-font, "Itim", "Mali", sans-serif) !important;
+  font-weight: 700 !important;
+  padding: 4px 12px !important;
+}
+
+/* 5. Office Workspace, Navigator & Panels */
+[data-rubber-hose="true"] .conversation-workspace {
+  background-color: var(--rh-paper, #ecd7ac) !important;
+}
+
+[data-rubber-hose="true"] .workspace-navigator {
+  background-color: var(--rh-paper, #ecd7ac) !important;
+  background-image: url("/rubber-hose/paper.jpg") !important;
+  border-right: 2.5px solid var(--rh-ink, #251d16) !important;
+  color: var(--rh-ink, #251d16) !important;
+}
+
+[data-rubber-hose="true"] .workspace-conversation {
+  background-color: var(--rh-paper, #ecd7ac) !important;
+  background-image: url("/rubber-hose/paper.jpg") !important;
+  border-left: 2.5px solid var(--rh-ink, #251d16) !important;
+  box-shadow: -4px 0 0 rgba(37, 29, 22, 0.15) !important;
+}
+
+[data-rubber-hose="true"] .workspace-conversation-collapse {
+  background: var(--rh-cream, #fbe7c0) !important;
+  border: 2px solid var(--rh-ink, #251d16) !important;
+  border-right: 0 !important;
+  border-radius: 12px 0 0 12px !important;
+  color: var(--rh-ink, #251d16) !important;
+  box-shadow: -2px 3px 0 var(--rh-ink, #251d16) !important;
+  font-weight: 700 !important;
+}
+
+[data-rubber-hose="true"] .workspace-conversation-collapse:hover {
+  background: var(--rh-cream-light, #fff5db) !important;
+}
+
+[data-rubber-hose="true"] .workspace-drawer-toggle {
+  background: var(--rh-cream, #fbe7c0) !important;
+  border: 2.5px solid var(--rh-ink, #251d16) !important;
+  border-radius: 999px !important;
+  box-shadow: 2px 3px 0 var(--rh-ink, #251d16) !important;
+  color: var(--rh-ink, #251d16) !important;
+  font-family: var(--rh-font, "Itim", "Mali", sans-serif) !important;
+  font-weight: 700 !important;
+}
+
+[data-rubber-hose="true"] .ui2-game-header {
+  background-color: var(--rh-cream, #fbe7c0) !important;
+  border-bottom: 2.5px solid var(--rh-ink, #251d16) !important;
+  color: var(--rh-ink, #251d16) !important;
+  box-shadow: 0 3px 0 rgba(37, 29, 22, 0.15) !important;
+}
+
+[data-rubber-hose="true"] .ui2-game-header h1 {
+  font-family: var(--rh-font, "Itim", "Mali", sans-serif) !important;
+  font-weight: 700 !important;
+  color: var(--rh-ink, #251d16) !important;
+}
+
+[data-rubber-hose="true"] .room-header {
+  background-color: var(--rh-cream, #fbe7c0) !important;
+  border-bottom: 2.5px solid var(--rh-ink, #251d16) !important;
+  color: var(--rh-ink, #251d16) !important;
+}
+

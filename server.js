@@ -71,6 +71,31 @@ async function main() {
   const socketHandlers = unwrapTsModule(await import("./src/server/socket-handlers.ts"));
   const { setupSocketHandlers, getRoomUserIds, getSocketIdsForUser } = socketHandlers;
 
+  // Ensure Hermes Gateway daemon is running hidden in the background for local usage
+  try {
+    const localManager = unwrapTsModule(await import("./src/lib/hermes/local-manager.ts"));
+    if (localManager && localManager.syncLocalHermesWorkerPropagationAndLinks) {
+      localManager.syncLocalHermesWorkerPropagationAndLinks();
+    }
+    if (localManager && localManager.ensureHermesGatewayRunning) {
+      localManager.ensureHermesGatewayRunning().catch(() => {});
+    }
+  } catch (err) {
+    console.warn("[server] Hermes auto-start:", err);
+  }
+
+  // Auto-bootstrap: default config, skill sync, Gemini Web bridge
+  try {
+    const bootstrap = unwrapTsModule(await import("./src/server/auto-bootstrap.ts"));
+    if (bootstrap && bootstrap.runBootstrap) {
+      bootstrap.runBootstrap(dir).catch((e) =>
+        console.warn("[server] Bootstrap:", e)
+      );
+    }
+  } catch (err) {
+    console.warn("[server] Auto-bootstrap:", err);
+  }
+
   // Start Next.js (this creates and listens on the HTTP server)
   await startServer({
     dir,
