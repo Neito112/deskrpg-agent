@@ -3,7 +3,10 @@
  *
  * Responsibilities:
  * 1. Ensure `data/cli-routing-config.json` exists with defaults.
- * 2. Sync 5 core skills to %LOCALAPPDATA%\hermes\skills\ (if newer or missing).
+ * 2. Sync 6 core skills to the Hermes skills dir (if newer or missing).
+ *    Windows: %LOCALAPPDATA%\hermes\skills\ — Linux/macOS: $XDG_DATA_HOME
+ *    (or ~/.local/share)/hermes/skills. Docker/Linux must never sync to a
+ *    Windows path.
  * 3. If Gemini Web profile already has a login session, start the background bridge.
  * 4. Register cleanup handlers for browser processes.
  *
@@ -54,12 +57,31 @@ const CORE_SKILLS = [
   "agy-executor",
   "hermes-orchestrator",
   "task-model-router",
+  "blender-artist",
 ] as const;
 
 function getHermesSkillsDir(): string {
-  const localAppData =
-    process.env.LOCALAPPDATA || path.join(os.homedir(), "AppData", "Local");
-  return path.join(localAppData, "hermes", "skills");
+  // Cross-platform: Docker/Linux must NOT sync to a Windows path.
+  // Windows keeps %LOCALAPPDATA%\hermes\skills; Linux/macOS use the XDG
+  // data dir (~/.local/share/hermes/skills when $XDG_DATA_HOME is unset).
+  if (process.platform === "win32") {
+    const localAppData =
+      process.env.LOCALAPPDATA || path.join(os.homedir(), "AppData", "Local");
+    return path.join(localAppData, "hermes", "skills");
+  }
+  const dataHome =
+    process.env.XDG_DATA_HOME || path.join(os.homedir(), ".local", "share");
+  return path.join(dataHome, "hermes", "skills");
+}
+
+/** True when running inside a Docker container. */
+function isRunningInDocker(): boolean {
+  if (process.env.DESKRPG_IN_DOCKER) return true;
+  try {
+    return fs.existsSync("/.dockerenv");
+  } catch {
+    return false;
+  }
 }
 
 /**
@@ -146,7 +168,15 @@ function syncOneSkill(srcDir: string, destDir: string): boolean {
 export function syncCoreSkills(appRoot: string): void {
   const srcRoot = resolveSkillsSourceDir(appRoot);
   if (!srcRoot) {
-    console.log("[bootstrap] Skills source directory not found, skipping sync.");
+    if (isRunningInDocker()) {
+      console.warn(
+        "[bootstrap] Skills source directory not found inside Docker — " +
+          "COPY .agents/skills into the image instead of relying on a host " +
+          "skills directory; skipping sync."
+      );
+    } else {
+      console.log("[bootstrap] Skills source directory not found, skipping sync.");
+    }
     return;
   }
 
@@ -174,9 +204,18 @@ export function syncCoreSkills(appRoot: string): void {
 // ─── 3. Auto-start Gemini Web bridge if already logged in ───────────
 
 function getGeminiProfileDir(): string {
-  const localAppData =
-    process.env.LOCALAPPDATA || path.join(os.homedir(), "AppData", "Local");
-  return path.join(localAppData, "DeskRPG", "gemini-profile");
+  // Cross-platform, same rule as getHermesSkillsDir: Docker/Linux must
+  // NOT resolve to a Windows path. Windows keeps
+  // %LOCALAPPDATA%\DeskRPG\gemini-profile; Linux/macOS use the XDG config
+  // dir (~/.config/DeskRPG/gemini-profile when $XDG_CONFIG_HOME is unset).
+  if (process.platform === "win32") {
+    const localAppData =
+      process.env.LOCALAPPDATA || path.join(os.homedir(), "AppData", "Local");
+    return path.join(localAppData, "DeskRPG", "gemini-profile");
+  }
+  const configHome =
+    process.env.XDG_CONFIG_HOME || path.join(os.homedir(), ".config");
+  return path.join(configHome, "DeskRPG", "gemini-profile");
 }
 
 /**

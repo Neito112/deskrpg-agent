@@ -23,7 +23,7 @@ ENV NEXT_PUBLIC_REGISTRATION_DISABLED=$NEXT_PUBLIC_REGISTRATION_DISABLED
 RUN npm run build
 
 FROM base AS runner
-LABEL org.opencontainers.image.source="https://github.com/dandacompany/deskrpg"
+LABEL org.opencontainers.image.source="https://github.com/Neito112/deskrpg-agent"
 WORKDIR /app
 ENV NODE_ENV=production
 # CLI adapter tools (optional; re-declared for runner stage)
@@ -151,7 +151,7 @@ RUN mkdir -p /app/data && chown -R nextjs:nodejs /app/data
 # Install CLI adapters based on build args
 RUN if [ "$ENABLE_CLAUDE" = "true" ]; then npm install -g @anthropic-ai/claude-code && echo 'Claude Code installed'; fi
 RUN if [ "$ENABLE_CODEX" = "true" ]; then npm install -g @openai/codex && echo 'Codex CLI installed'; fi
-RUN if [ "$ENABLE_GEMINI" = "true" ]; then echo 'TODO: gemini CLI install command'; fi
+RUN if [ "$ENABLE_GEMINI" = "true" ]; then npm install -g @google/gemini-cli && echo 'Gemini CLI installed'; fi
 RUN if [ "$ENABLE_OPENCODE" = "true" ]; then npm install -g opencode && echo 'OpenCode installed'; fi
 
 # Data directories for adapter auth and workspaces

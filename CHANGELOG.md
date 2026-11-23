@@ -7,6 +7,20 @@ GitHub Releases will be written later at actual release time.
 
 ## [Unreleased]
 
+## [2026.1122.1] - 2026-11-22
+
+### Added
+
+- HyperFrames dynamic slides: chat, reports and meeting minutes can surface HTML slide decks as slide links.
+- 3-tier model routing with production auto-bootstrap: startup seeds the default routing config and syncs core skills (now including `blender-artist`) to the Hermes skills directory.
+- `blender-artist` skill with a Blender MCP client (`blender-mcp-client.mjs`) for live Blender interaction, with headless Blender CLI fallback.
+
+### Fixed
+
+- Blender MCP liveness probe now uses a JSON-RPC `tools/list` call instead of a GET handshake the endpoint never answered.
+- Auto-bootstrap skill/profile paths are cross-platform: Linux and macOS use the XDG data/config dirs instead of a Windows `%LOCALAPPDATA%` path, and Docker runs warn when the skills source is missing instead of silently skipping the sync.
+- Docker `ENABLE_GEMINI` build arg now installs the real Gemini CLI (`@google/gemini-cli`) instead of printing a TODO.
+
 ## [2026.1019.1] - 2026-10-19
 
 ### Added

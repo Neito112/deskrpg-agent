@@ -1,13 +1,13 @@
 {
   "name": "deskrpg",
-  "version": "2026.1019.1",
+  "version": "2026.1122.1",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/dandacompany/deskrpg.git"
+    "url": "git+https://github.com/Neito112/deskrpg-agent.git"
   },
   "homepage": "https://deskrpg.com",
   "bugs": {
-    "url": "https://github.com/dandacompany/deskrpg/issues"
+    "url": "https://github.com/Neito112/deskrpg-agent/issues"
   },
   "private": false,
     "main": "electron/main.js",

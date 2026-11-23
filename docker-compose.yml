@@ -10,7 +10,7 @@
 
 services:
   deskrpg:
-    image: ${DESKRPG_IMAGE:-ghcr.io/dandacompany/deskrpg:latest}
+    image: ${DESKRPG_IMAGE:-ghcr.io/Neito112/deskrpg:latest}
     restart: unless-stopped
     depends_on:
       - hermes
@@ -72,7 +72,7 @@ services:
   # One-shots before Hermes: plugin-pin reads this image's plugin commit (new: restarts Hermes);
   # hermes-plugins disables, reinstalls, enables it; a failure keeps the old one.
   plugin-pin:
-    image: ${DESKRPG_IMAGE:-ghcr.io/dandacompany/deskrpg:latest}
+    image: ${DESKRPG_IMAGE:-ghcr.io/Neito112/deskrpg:latest}
     restart: "no"
     user: root
     entrypoint: ["sh", "-c"]

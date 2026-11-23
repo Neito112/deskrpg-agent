@@ -12,7 +12,7 @@ Run the office and its Hermes Agent 24/7 on one VPS — see [deploy/hostinger](d
 
 **Already have a VPS** — load the compose into Docker Manager:
 
-[![Deploy on Hostinger](https://assets.hostinger.com/vps/deploy.svg)](https://www.hostinger.com/vps/docker-hosting?compose_url=https://raw.githubusercontent.com/dandacompany/deskrpg/refs/heads/master/docker-compose.yml)
+[![Deploy on Hostinger](https://assets.hostinger.com/vps/deploy.svg)](https://www.hostinger.com/vps/docker-hosting?compose_url=https://raw.githubusercontent.com/Neito112/deskrpg-agent/refs/heads/master/docker-compose.yml)
 
 > ⚠️ **Docker Manager route: then deploy Traefik** — it gives the office its HTTPS address. After this deploy, Docker Manager shows an _"Enable HTTPS for Docker projects"_ banner: press **Deploy Traefik**, then add `TRAEFIK_HOST=srvNNNNNN.hstgr.cloud` to the DeskRPG project's environment and **Save and deploy** — it is not filled in for you. Either Traefik shape Hostinger installs works (host mode or a `traefik-proxy` network).
 
@@ -25,8 +25,8 @@ DeskRPG is a self-hosted **3D miniature virtual office for AI agents**. Your [He
 DeskRPG does not bundle an agent runtime. It attaches to the Hermes gateway you already run, so existing Hermes users bring their profiles as they are — nothing to migrate.
 
 - Website: [https://deskrpg.com](https://deskrpg.com) (live)
-- Source code: `https://github.com/dandacompany/deskrpg`
-- Version: `v2026.1019.1` — Share original files with staff in direct messages, rooms, and meetings. Hermes receives the original bytes even when text extraction is unavailable. Includes upload status, retry/cancel controls, downloads, and retained meeting references. Requires plugin 0.32.0.
+- Source code: `https://github.com/Neito112/deskrpg-agent`
+- Version: `v2026.1122.1` — HyperFrames dynamic slides, 3-tier model routing, production auto-bootstrap, and the `blender-artist` skill with Blender MCP support. See [CHANGELOG.md](CHANGELOG.md).
 
 ## What You Can Do
 
@@ -82,7 +82,7 @@ Published npm package: `deskrpg`
 ### Option 2: Local Run with PostgreSQL
 
 ```bash
-git clone https://github.com/dandacompany/deskrpg.git
+git clone https://github.com/Neito112/deskrpg-agent.git
 cd deskrpg
 npm install
 cp .env.example .env.local
@@ -97,7 +97,7 @@ This is the best option if you want to run the full app directly from the repo.
 ### Option 3: Local Run with SQLite
 
 ```bash
-git clone https://github.com/dandacompany/deskrpg.git
+git clone https://github.com/Neito112/deskrpg-agent.git
 cd deskrpg
 npm install
 npm run setup:lite
@@ -111,7 +111,7 @@ SQLite stores data in `data/deskrpg.db`.
 Recommended if you expect multiple users or want a more durable database.
 
 ```bash
-git clone https://github.com/dandacompany/deskrpg.git
+git clone https://github.com/Neito112/deskrpg-agent.git
 cd deskrpg
 printf 'JWT_SECRET=%s\nPOSTGRES_PASSWORD=%s\n' "$(openssl rand -hex 32)" "$(openssl rand -hex 16)" > .env.docker
 docker compose --env-file .env.docker -f docker/docker-compose.external.yml up -d
@@ -125,14 +125,14 @@ it publishes no HTTP port and defaults `COOKIE_SECURE` to `true`, so a plain `do
 gives you nothing to connect to, and a browser would discard the login cookie over HTTP. See
 [deploy/hostinger/README.md](deploy/hostinger/README.md) for that path.
 
-Public images live on GHCR: `ghcr.io/dandacompany/deskrpg`. The Compose default is `ghcr.io/dandacompany/deskrpg:latest`; to pin a release, set `DESKRPG_IMAGE=ghcr.io/dandacompany/deskrpg:<release tag>` in `.env.docker`. The old Docker Hub `dandacompany/deskrpg` images are legacy and stop at `2026.9.19` — they receive no new releases.
+Public images live on GHCR: `ghcr.io/Neito112/deskrpg`. The Compose default is `ghcr.io/Neito112/deskrpg:latest`; to pin a release, set `DESKRPG_IMAGE=ghcr.io/Neito112/deskrpg:<release tag>` in `.env.docker`. The old Docker Hub `dandacompany/deskrpg` images are legacy and stop at `2026.9.19` — they receive no new releases.
 
 ### Option 5: Docker with SQLite
 
 Recommended if you want the simplest single-machine setup.
 
 ```bash
-git clone https://github.com/dandacompany/deskrpg.git
+git clone https://github.com/Neito112/deskrpg-agent.git
 cd deskrpg
 printf 'JWT_SECRET=%s\n' "$(openssl rand -hex 32)" > .env.lite
 docker compose --env-file .env.lite -f docker/docker-compose.lite.yml up -d
@@ -140,7 +140,7 @@ docker compose --env-file .env.lite -f docker/docker-compose.lite.yml up -d
 
 DeskRPG will open on `http://localhost:3102`.
 
-To pin a specific release, add `DESKRPG_IMAGE=ghcr.io/dandacompany/deskrpg:<release tag>` before the command ([release tags](https://github.com/dandacompany/deskrpg/releases)).
+To pin a specific release, add `DESKRPG_IMAGE=ghcr.io/Neito112/deskrpg:<release tag>` before the command ([release tags](https://github.com/Neito112/deskrpg-agent/releases)).
 
 Use SQLite if you want to get started quickly. Use PostgreSQL if you want a setup that is easier to keep long term.
 
@@ -149,7 +149,7 @@ Use SQLite if you want to get started quickly. Use PostgreSQL if you want a setu
 Runs the office and a Hermes gateway together on one machine — no VPS, no HTTPS. Ports are bound to `127.0.0.1` only.
 
 ```bash
-git clone https://github.com/dandacompany/deskrpg.git
+git clone https://github.com/Neito112/deskrpg-agent.git
 cd deskrpg
 printf 'HERMES_API_KEY=%s\n' "$(openssl rand -hex 32)" > .env.hermes
 echo 'OPENROUTER_API_KEY=<your key>' >> .env.hermes   # or OPENAI_API_KEY / ANTHROPIC_API_KEY
@@ -189,7 +189,7 @@ Update on the computer or server that runs DeskRPG. If you only visit an office 
 2. On your DeskRPG project, choose **⋮ → Update**.
 3. Wait for deployment to finish, then refresh your DeskRPG browser tab.
 
-If `DESKRPG_IMAGE` is pinned to an older release, open **Manage → Environment**, set it to `ghcr.io/dandacompany/deskrpg:latest` (or the desired [release tag](https://github.com/dandacompany/deskrpg/releases)), and choose **Save and deploy**.
+If `DESKRPG_IMAGE` is pinned to an older release, open **Manage → Environment**, set it to `ghcr.io/Neito112/deskrpg:latest` (or the desired [release tag](https://github.com/Neito112/deskrpg-agent/releases)), and choose **Save and deploy**.
 
 For an older installation, check **Manage → .yaml editor** for `plugin-pin`. If it is missing, follow the [one-time compose replacement](deploy/hostinger/README.md#set-up-before-this-change-replace-the-compose-once). After that, Update also installs the plugin version matched to DeskRPG and restarts Hermes when the pin changes. Update preserves the existing data volumes and environment settings. **Do not delete the project to update it.**
 

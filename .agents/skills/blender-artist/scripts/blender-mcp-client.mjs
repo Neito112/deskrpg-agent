@@ -43,14 +43,13 @@ async function sendMcpRequest(method, params = {}) {
 }
 
 async function isMcpAlive() {
-  try {
-    const res = await fetch(BLENDER_MCP_URL, { method: 'GET' });
-    if (res.ok) {
-      const data = await res.json();
-      return data?.service === 'mcp-for-blender-pro';
-    }
-  } catch {}
-  return false;
+  // The MCP endpoint speaks JSON-RPC over POST only: there is no GET
+  // handshake, so the old GET expecting { service: 'mcp-for-blender-pro' }
+  // never matched (servers typically 404/405 a GET here). Probe with a
+  // real JSON-RPC call instead — a tools/list that returns a result
+  // without an error means the server is up.
+  const result = await sendMcpRequest('tools/list');
+  return Boolean(result) && result.ok !== false;
 }
 
 async function runHeadlessPython(scriptPath, extraArgs = []) {
